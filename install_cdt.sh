@@ -26,12 +26,12 @@ sudo apt install python3.10 -y
 sudo apt install python3-pip python3.10-venv python3.10-distutils python3.10-gdbm python3.10-tk -y
 
 cd ~ && git clone http://github.com/FenTechSolutions/CausalDiscoveryToolbox.git
-if [[ -n proxy ]]; then
+if [[ -z proxy ]]; then
 	sudo pip3 install cdt
 	cd CausalDiscoveryToolbox && sudo pip3 install -r requirements.txt && sudo python3 setup.py install develop --user && cd ~
 else
-	sudo pip3 install --proxy $proxy cdt
-	cd CausalDiscoveryToolbox && sudo pip3 install --proxy $proxy -r requirements.txt && sudo python3 setup.py install develop --user  && cd ~
+	sudo pip3 install --proxy $http_proxy cdt
+	cd CausalDiscoveryToolbox && sudo pip3 install --proxy $http_proxy -r requirements.txt && sudo python3 setup.py install develop --user  && cd ~
 fi
 
 sudo apt-get install libharfbuzz-dev libfribidi-dev libfontconfig1-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev -y
