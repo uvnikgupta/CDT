@@ -2,6 +2,7 @@
 This repo was created because the original installation steps @ https://fentechsolutions.github.io/CausalDiscoveryToolbox/html/index.html does not work on Ubuntu 22.04
 
 If anyone wants a script that automatically installs all the dependencies and the CDT on Ubuntu 22.04, just clone this repo and run `install_cdt.sh`
+<p>To check if the installation was successfull you can run either one or both of the python scripts avaialble in this repo
 <br><br>
 <hr>
 Below is the process that I followed to get this to work. This is for my own reference for a future me but if someone is also interested to know, feel free to read through.<br><br>
