@@ -14,7 +14,7 @@ Then follow the below steps
 4. Enter a password
 5. Run "sudo apt-get update -y && sudo apt-get install git -y"
 6. <code> git clone https://github.com/uvnikgupta/CDT.git </code>
-7. <code> chmod 755 CDT/install_cdt.sh && CDT/install_cdt.sh <code>
+7. <code> chmod 755 CDT/install_cdt.sh && CDT/install_cdt.sh </code>
 8. Update the installation script to fix errors
 9. commit and push the changes
 10. From windows command select Ubuntu --> App settings
