@@ -1,11 +1,14 @@
 # CDT
-This repo has steps and a script to install CDT on Ubuntu 22.04. It was created because the original installation steps @ https://fentechsolutions.github.io/CausalDiscoveryToolbox/html/index.html does not work on Ubuntu 22.04
+This repo was created because the original installation steps @ https://fentechsolutions.github.io/CausalDiscoveryToolbox/html/index.html does not work on Ubuntu 22.04
 
 If anyone wants a script that automatically installs all the dependencies and the CDT on Ubuntu 22.04, just clone this repo and run `install_cdt.sh`
-
+<br><br>
+<hr>
+Below is the process that I followed to get this to work. This is for my own reference for a future me but if someone is also interested to know, feel free to read through.<br><br>
 I started off with an Ubuntu 22.04 VM and tried a lot of different ways to install CDT. At the end I could successsfully install it. But then I did not remember the steps I executed. Hence I started the process all over again but this time making sure that was noting down the steps. Even then it took me a couple of iterations till I got the correct sequence that I could put into a script to install it correctly.
 
 I used WSL and am capturing the steps that I followed to get a clean version of Ubuntu 22.04 and restart the installation in each iteration
+- Enable WSL on my Windows 10 (ref : https://ubuntu.com/tutorials/install-ubuntu-on-wsl2-on-windows-10#1-overview)
 - Check WSL version using <code> wsl -l -v </code>
 - Unregister any previous ubuntu 22.04 installation using <code> wsl --unregister Ubuntu-22.04 </code>
 
