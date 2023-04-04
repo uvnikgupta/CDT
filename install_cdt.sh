@@ -37,7 +37,7 @@ fi
 sudo apt-get install libharfbuzz-dev libfribidi-dev libfontconfig1-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev -y
 sudo apt-get install libssl-dev libgmp3-dev git build-essential libv8-dev libcurl4-openssl-dev libgsl-dev libxml2-dev -y
 
-wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sudo gpg --dearmor -o /usr/share/keyrings/r-project.gpg
+wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/r-project.gpg
 echo "deb [signed-by=/usr/share/keyrings/r-project.gpg] https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" | sudo tee -a /etc/apt/sources.list.d/r-project.list
 sudo apt-get update -y
 sudo apt-get install --no-install-recommends r-base r-base-dev -y
