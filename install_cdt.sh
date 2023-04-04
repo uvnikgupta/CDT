@@ -43,11 +43,12 @@ install.packages("discretecdAlgorithm")
 install.packages("https://cran.r-project.org/src/contrib/Archive/randomForest/randomForest_4.6-14.tar.gz", repos=NULL, type="source")
 install.packages("https://cran.r-project.org/src/contrib/Archive/fastICA/fastICA_1.2-2.tar.gz", repos=NULL, type="source")
 
-BiocManager::install(c("bnlearn", "pcalg", "kpcalg", "glmnet", "mboost", "SID"), force=TRUE, update = TRUE, ask = FALSE)
+BiocManager::install(c("bnlearn", "pcalg", "kpcalg", "glmnet", "mboost"), force=TRUE, update = TRUE, ask = FALSE)
 install.packages("https://cran.r-project.org/src/contrib/Archive/CAM/CAM_1.0.tar.gz", repos=NULL, type="source")
 install.packages("https://cran.r-project.org/src/contrib/Archive/ccdrAlgorithm/ccdrAlgorithm_0.0.6.tar.gz", repos=NULL, type="source")
 install.packages("https://cran.r-project.org/src/contrib/sparsebnUtils_0.0.8.tar.gz", repos=NULL, type="source")
 install.packages("https://cran.r-project.org/src/contrib/Archive/sparsebn/sparsebn_0.1.2.tar.gz", repos=NULL, type="source")
+install.packages("https://cran.r-project.org/src/contrib/Archive/SID/SID_1.0.tar.gz", repos=NULL, type="source")
 
 library(devtools); install_github("cran/CAM"); install_github("cran/momentchi2"); install_github("Diviyan-Kalainathan/RCIT")
 EOF
