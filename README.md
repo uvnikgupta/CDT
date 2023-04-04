@@ -3,6 +3,9 @@ This repo was created because the original installation steps @ https://fentechs
 
 If anyone wants a script that automatically installs all the dependencies and the CDT on Ubuntu 22.04, just clone this repo and run `install_cdt.sh`
 <p>To check if the installation was successfull you can run either one or both of the python scripts avaialble in this repo
+<code>python3 CDT/cdt_basic.py</code><br>
+<code>python3 CDT/cdt_advanced.py</code><br>
+<p><code>cdt_advanced.py</code> will run much faster if you have GPUs else it may even take a couple of hours depending upon your CPU and the load on it
 <br><br>
 <hr>
 Below is the process that I followed to get this to work. This is for my reference for a future me but if you are also interested to know, feel free to read through.<br><br>
