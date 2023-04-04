@@ -42,6 +42,15 @@ echo "deb [signed-by=/usr/share/keyrings/r-project.gpg] https://cloud.r-project.
 sudo apt-get update -y
 sudo apt-get install --no-install-recommends r-base r-base-dev -y
 
+# Modify the Renviron.site file for proxy
+if [[ proxy ]]; then
+	sudo cp /usr/lib/R/etc/Renviron.site /usr/lib/R/etc/Renviron.site.orig
+	sudo sh -c 'echo >> /usr/lib/R/etc/Renviron.site'
+	sudo -E sh -c 'echo http_proxy=$http_proxy >> /usr/lib/R/etc/Renviron.site'
+	sudo -E sh -c 'echo https_proxy=$http_proxy >> /usr/lib/R/etc/Renviron.site'
+fi
+
+#Install R libraries
 sudo -i R -q --no-save <<'EOF'
 install.packages("V8")
 install.packages("sfsmisc")
