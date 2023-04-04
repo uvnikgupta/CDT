@@ -20,7 +20,7 @@ start=$(date +%s)
 
 sudo apt-get update -y && sudo apt-get upgrade -y
 sudo apt-get install software-properties-common -y
-sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo -E add-apt-repository ppa:deadsnakes/ppa -y
 sudo apt-get update -y
 sudo apt install python3.10 -y
 sudo apt install python3-pip python3.10-venv python3.10-distutils python3.10-gdbm python3.10-tk -y
