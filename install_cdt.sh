@@ -3,7 +3,7 @@ if [[ "$answer" == "y" ]]; then
   read -p "Enter your proxy: " proxy
   
   substr="http://"
-  proxy=${proxy/substr}
+  proxy=${proxy/$substr}
   export http_proxy=http://$proxy
   export https_proxy=https://$proxy
   
