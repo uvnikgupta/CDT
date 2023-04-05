@@ -1,22 +1,21 @@
-read -p "Are you running this from behind a firewall? (y/[n]) " answer
-if [[ "$answer" == "y" ]]; then
-  read -p "Enter your proxy: " proxy
-  
+start=$(date +%s)
+
+# Check proxy settings and export it in this shell for subsequent subshells to inherit.
+if [[ $http_proxy || $HTTP_PROXY ]]; then
+  proxy=$http_proxy || $HTTP_PROXY
   substr="http://"
   proxy=${proxy/$substr}
   export http_proxy=http://$proxy
   export https_proxy=https://$proxy
-  
-  echo "Checking if the proxy works ..."
-  wget --timeout=5 http://example.com > /dev/null 2>&1
-  if [[ $? -ne 0 ]]; then
-    echo "ERROR: proxy does not seem to be correct. Cannot reach internet."
-    echo "Exiting installation ..."
-    exit
-  fi
 fi
 
-start=$(date +%s)
+# Check if connection to internet works
+wget --timeout=5 http://example.com > /dev/null 2>&1
+if [[ $? -ne 0 ]]; then
+  echo "ERROR: Cannot reach internet. Check your connection. If you are behind a firewall, check your proxy settings"
+  echo "Exiting installation ..."
+  exit
+fi
 
 sudo apt-get update -y && sudo apt-get upgrade -y
 sudo apt-get install software-properties-common -y
