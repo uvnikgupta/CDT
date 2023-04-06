@@ -10,7 +10,7 @@ if [[ $http_proxy || $HTTP_PROXY ]]; then
 fi
 
 # Check if connection to internet works
-wget --timeout=5 http://example.com > /dev/null 2>&1
+wget --timeout=30 http://example.com > /dev/null 2>&1
 if [[ $? -ne 0 ]]; then
   echo "ERROR: Cannot reach internet. Check your connection. If you are behind a firewall, check your proxy settings"
   echo "Exiting installation ..."
