@@ -1,5 +1,6 @@
 do {
-    $condaenv = Read-Host "Conda env name for cdt installation: "
+    Write-Host "Enter the conda env name for cdt installation: " -ForegroundColor Green -NoNewline
+    $condaenv = Read-Host
 } while (-not $condaenv -ne "")
 
 # Install R
@@ -14,8 +15,11 @@ if (Test-Path $rpath -PathType Container) {
     # append the R installation path to systme path
     $env:Path = "$env:Path;$rpath"
 } else {
-    Write-Output "Oops!! Could not get the installation path for R."
+    throw "Oops!! Could not get the installation path for R."
 }
+
+# Install RTools
+winget install --disable-interactivity --accept-package-agreements --accept-source-agreements -e --id RProject.Rtools -v 4.2
 
 # create conda environment, install cdt and dependent libraries for it to work without errors
 conda create -y -n $condaenv python=3.10
@@ -70,5 +74,5 @@ foreach ($path in $paths) {
 conda activate $condaenv
 
 ## Delete R and conda env using the following commands:
-# winget rm --id RProject.R
+# winget rm --id RProject.R; winget rm --id RProject.Rtools
 # conda deactivate; conda env remove -n cdt
