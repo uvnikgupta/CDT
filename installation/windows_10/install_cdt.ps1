@@ -76,3 +76,9 @@ conda activate $condaenv
 ## Delete R and conda env using the following commands:
 # winget rm --id RProject.R; winget rm --id RProject.Rtools
 # conda deactivate; conda env remove -n cdt
+
+# The following RScripts did not get executed successfully on windows
+# RScript.exe  -e "install.packages('https://cran.r-project.org/src/contrib/Archive/ccdrAlgorithm/ccdrAlgorithm_0.0.6.tar.gz', repos=NULL, type='source')"
+# RScript.exe  -e "install.packages('https://cran.r-project.org/src/contrib/Archive/sparsebn/sparsebn_0.1.2.tar.gz', repos=NULL, type='source')"
+# Not sure which CDT functionality will break due to this. 
+# When I get time I need to findout the correct versions of these libraries for windoes.
