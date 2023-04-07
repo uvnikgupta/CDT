@@ -10,7 +10,7 @@ winget install --disable-interactivity --accept-package-agreements --accept-sour
 $rpath = Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object {$_.DisplayName -like "R*"} | Select-Object -ExpandProperty InstallLocation | Select-String -Pattern "R\\R-" | Select-Object -ExpandProperty Line
 $rpath = $rpath + "bin"
 
-# check is the installation path exists
+# Check if the "bin" path exists
 if (Test-Path $rpath -PathType Container) {
     # append the R installation path to systme path
     $env:Path = "$env:Path;$rpath"
@@ -21,14 +21,7 @@ if (Test-Path $rpath -PathType Container) {
 # Install RTools
 winget install --disable-interactivity --accept-package-agreements --accept-source-agreements -e --id RProject.Rtools -v 4.2
 
-# create conda environment, install cdt and dependent libraries for it to work without errors
-conda create -y -n $condaenv python=3.10
-conda activate $condaenv
-conda install -y -c conda-forge cdt
-conda install -y networkx=2.7
-conda deactivate
-
-# install R libraries
+# Install R libraries
 RScript.exe  -e "install.packages('igraph', repos='http://cran.us.r-project.org')"
 RScript.exe  -e "install.packages('V8', repos='http://cran.us.r-project.org')"
 RScript.exe  -e "install.packages('sfsmisc', repos='http://cran.us.r-project.org')"
@@ -59,14 +52,21 @@ RScript.exe  -e "install.packages('https://cran.r-project.org/src/contrib/Archiv
 RScript.exe  -e "install.packages('https://cran.r-project.org/src/contrib/Archive/sparsebn/sparsebn_0.1.2.tar.gz', repos=NULL, type='source')"
 RScript.exe  -e "library(devtools); install_github('cran/CAM'); install_github('cran/momentchi2'); install_github('Diviyan-Kalainathan/RCIT')"
 
-# get the conda cdt env path
+# Create conda environment, install cdt and dependent python libraries
+conda create -y -n $condaenv python=3.10
+conda activate $condaenv
+conda install -y -c conda-forge cdt
+conda install -y networkx=2.7
+conda deactivate
+
+# Get the conda cdt environment path
 $cdtpath = conda env list | Select-String -Pattern $condaenv | Select-Object -ExpandProperty Line
 $cdtpath = $cdtpath.Split(" ")[-1]  + "\Lib\site-packages\cdt"
 
 $scriptPath = $PSScriptRoot
 $paths = "\data\resources", "\utils\R_templates", "\causality\graph\R_templates"
 
-# copy the missing files
+# Copy the missing files
 foreach ($path in $paths) {
     $sourcepath = $scriptPath + "\missing_in_windows\" + $path
     $destpath = $cdtpath + $path
