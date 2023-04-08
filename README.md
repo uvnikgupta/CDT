@@ -1,8 +1,8 @@
-# CDT
+# CDT - Causal Discovery Toolkit
 
 This repo was created because the original installation steps @ https://fentechsolutions.github.io/CausalDiscoveryToolbox/html/index.html do not work on Ubuntu 22.04 :woozy_face:
 
-I extended this further and created installation for Windows also. So all of you Windows fans out there can also benefit from this
+I extended this further and created installation for Windows also. So, all of you Windows fans out there can also benefit from this.
 
 Mac fans, soorrry, you need to do this on your own. But, I guess, you can get some inspriation from here.
 
