@@ -4,8 +4,8 @@ import random, math, copy
 
 class DynamicSCM():
 
-    def __init__(self):
-        pass
+    def __init__(self, max_parents=10000):
+        self.max_parents = max_parents
 
     def get_data(self):
         return copy.deepcopy(self.__data)
@@ -93,7 +93,9 @@ class DynamicSCM():
         parent_levels = self.get_parent_levels(levels_and_distributions)
         for level in parent_levels:
             possible_parents = levels_and_distributions[level][1]
-            num_parents = random.randint(1, len(possible_parents))
+            max_parents = self.max_parents if len(
+                possible_parents) > self.max_parents else len(possible_parents)
+            num_parents = random.randint(1, max_parents)
             parents.extend(random.sample(possible_parents, num_parents))
         return parents
 
