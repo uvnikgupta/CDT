@@ -3,9 +3,9 @@ import random, math, copy
 
 
 class DynamicSCM():
-
-    def __init__(self, max_parents=10000):
+    def __init__(self, min_parents=1, max_parents=10000):
         self.max_parents = max_parents
+        self.min_parents = min_parents
 
     def get_data(self):
         return copy.deepcopy(self.__data)
@@ -79,6 +79,13 @@ class DynamicSCM():
         return dist
 
     def get_parent_levels(self, levels_and_distributions):
+        '''
+        This method selects the parent levels from which the
+        parents for a new node needs to be selected. It does
+        so by decreasing probabilities from the lowest to the
+        highest level so that the closest parent level has
+        the highest probability of getting selected
+        '''
         levels = list(range(len(levels_and_distributions)))
         level_probs = [round(math.exp(1.5 * l), 1) for l in levels]
         parent_levels = []
@@ -88,15 +95,41 @@ class DynamicSCM():
                 parent_levels.append(possible_level)
         return parent_levels
 
+    def get_min_max_parents(self, possible_parents):
+        if self.max_parents < len(possible_parents):
+            max_parents = self.max_parents
+        else:
+            max_parents = len(possible_parents)
+
+        if self.min_parents > max_parents:
+            min_parents = max_parents
+        else:
+            min_parents = self.min_parents
+        return min_parents, max_parents
+
     def get_parents(self, levels_and_distributions):
+        '''
+        This method randomly chooses the parent nodes for a new child 
+        node that is getting created. It does that by first getting the 
+        parent levels from which it will select the parents. Then it 
+        iterates over these levels. From each level it samples a random 
+        set of parents between the mix and max number of parents and adds 
+        it to the parents list. Because the sampling is done at each 
+        level the final list may now have more than the max number of 
+        parents. Hence once again max number of parents is sampled from 
+        the final parents list
+        '''
         parents = []
         parent_levels = self.get_parent_levels(levels_and_distributions)
         for level in parent_levels:
             possible_parents = levels_and_distributions[level][1]
-            max_parents = self.max_parents if len(
-                possible_parents) > self.max_parents else len(possible_parents)
-            num_parents = random.randint(1, max_parents)
+            min_parents, max_parents = self.get_min_max_parents(
+                possible_parents)
+            num_parents = random.randint(min_parents, max_parents)
             parents.extend(random.sample(possible_parents, num_parents))
+
+        _, max_parents = self.get_min_max_parents(parents)
+        parents = random.sample(parents, max_parents)
         return parents
 
     def populate_level_distributions(self, level, level_data,
