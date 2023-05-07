@@ -4,37 +4,52 @@ import random, math, copy
 
 class DynamicSCM():
     def __init__(self,
+                 distributions_file="distributions.txt",
                  min_parents=1,
                  max_parents=10000,
                  parent_levels_probs=[]):
+        self.distributions_file = distributions_file
         self.max_parents = max_parents
         self.min_parents = min_parents
         self.parent_levels_probs = parent_levels_probs
+        self.distributions = []
 
-    def get_data(self):
-        return copy.deepcopy(self.__data)
-
-    def get_distributions(self):
+    def __get_default_distributions(self):
         dists = [
-            f"LogLogistic(alpha={random.randint(5, 20)}, beta={round(random.uniform(1,3.5),1)})",
-            f"Normal(mean={random.randint(0,10)}, std={round(random.uniform(1,20),2)})",
-            f"LogNormal(mean={random.randint(0,10)}, std={round(random.uniform(1,20),2)})",
-            f"Benini(alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(.1, 1.0), 1)}, sigma={round(random.uniform(.1, 1.0), 1)})",
-            f"Beta(alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(.1, 1.0), 1)})",
-            f"Exponential(rate={round(random.uniform(.5, 10.0), 1)})",
-            f"FDistribution(d1={random.randint(2, 4)}, d2={random.randint(5, 8)})",
-            f"Gamma(k={round(random.uniform(0.1, 4.0), 1)}, theta={round(random.uniform(2.0, 8.0), 1)})",
-            f"GammaInverse(a={random.randint(1, 4)}, b={random.randint(2, 8)})",
-            f"Bernoulli({round(random.random(), 1)})",
-            f"Binomial(n={random.randint(10, 20)}, p={round(random.uniform(0.05, 1.00), 2)}, succ={random.randint(2, 10)})",
-            f"BetaBinomial(n={random.randint(10, 100)}, alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(2, 5),1)})",
-            f"Die(sides={random.randint(4, 10)})",
-            f"FiniteRV({{1: 0.33, 2: 0.34, 3: 0.33}})",
-            f"Geometric(p={round(random.uniform(0.05, 1.00), 2)})",
-            f"Poisson(lamda={round(random.uniform(0.05, 1.00), 1)})",
-            f"FiniteRV({{{random.randint(5, 10)}: 0.5, {random.randint(0, 3)}: 0.16, {random.randint(15, 25)}: 0.17, {random.randint(30, 50)}: 0.17}})"
+            'f"LogLogistic(alpha={random.randint(5, 20)}, beta={round(random.uniform(1,3.5),1)})"',
+            'f"Normal(mean={random.randint(0,10)}, std={round(random.uniform(1,20),2)})"',
+            'f"LogNormal(mean={random.randint(0,10)}, std={round(random.uniform(1,20),2)})"',
+            'f"Benini(alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(.1, 1.0), 1)}, sigma={round(random.uniform(.1, 1.0), 1)})"',
+            'f"Beta(alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(.1, 1.0), 1)})"',
+            'f"Exponential(rate={round(random.uniform(.5, 10.0), 1)})"',
+            'f"FDistribution(d1={random.randint(2, 4)}, d2={random.randint(5, 8)})"',
+            'f"Gamma(k={round(random.uniform(0.1, 4.0), 1)}, theta={round(random.uniform(2.0, 8.0), 1)})"',
+            'f"GammaInverse(a={random.randint(1, 4)}, b={random.randint(2, 8)})"',
+            'f"Bernoulli({round(random.random(), 1)})"',
+            'f"Binomial(n={random.randint(10, 20)}, p={round(random.uniform(0.05, 1.00), 2)}, succ={random.randint(2, 10)})"',
+            'f"BetaBinomial(n={random.randint(10, 100)}, alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(2, 5),1)})"',
+            'f"Die(sides={random.randint(4, 10)})"',
+            'f"FiniteRV({{1: 0.33, 2: 0.34, 3: 0.33}})"',
+            'f"Geometric(p={round(random.uniform(0.05, 1.00), 2)})"',
+            'f"Poisson(lamda={round(random.uniform(0.05, 1.00), 1)})"',
+            'f"FiniteRV({{{random.randint(5, 10)}: 0.5, {random.randint(0, 3)}: 0.16, {random.randint(15, 25)}: 0.17, {random.randint(30, 50)}: 0.17}})"'
         ]
         return dists
+
+    def __read_distributions_from_file(self):
+        try:
+            with open(self.distributions_file) as file:
+                self.distributions = file.readlines()
+        except:
+            print(
+                f"WARNING: {self.distributions_file} not found. Loading default set of distributions."
+            )
+            self.distributions = self.__get_default_distributions()
+
+    def get_distributions(self):
+        if not self.distributions:
+            self.__read_distributions_from_file()
+        return self.distributions
 
     def add_noise(self, dist):
         noise_ops = [False, True]
@@ -63,7 +78,7 @@ class DynamicSCM():
             dist = f"{dist} {op_1} {parent}"
         return dist
 
-    def get_distribution(self, parents):
+    def get_node_formula(self, parents):
         if not parents:
             dist = "N"
         else:
@@ -164,10 +179,10 @@ class DynamicSCM():
         dist_names = []
         for n in range(level_data['num']):
             name = level_data['name'] + str(n + 1)
-            dist = self.get_distribution(
+            dist = self.get_node_formula(
                 self.get_parents(levels_and_distributions))
-
-            dist = f"{name} = {dist}, N ~ {random.sample(self.get_distributions(), 1)[0]}"
+            sampled_dist = random.sample(self.get_distributions(), 1)[0]
+            dist = f"{name} = {dist}, N ~ {eval(sampled_dist)}"
             level_dists.append(dist)
             dist_names.append(name)
         levels_and_distributions[level] = (level_dists, dist_names)
@@ -232,6 +247,9 @@ class DynamicSCM():
         else:
             scm = self.create_scm_from_nodes_list(input_nodes)
         return scm
+
+    def get_data(self):
+        return copy.deepcopy(self.__data)
 
 
 if __name__ == "__main__":
