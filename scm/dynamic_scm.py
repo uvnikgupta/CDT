@@ -3,9 +3,13 @@ import random, math, copy
 
 
 class DynamicSCM():
-    def __init__(self, min_parents=1, max_parents=10000):
+    def __init__(self,
+                 min_parents=1,
+                 max_parents=10000,
+                 parent_levels_probs=[]):
         self.max_parents = max_parents
         self.min_parents = min_parents
+        self.parent_levels_probs = parent_levels_probs
 
     def get_data(self):
         return copy.deepcopy(self.__data)
@@ -78,21 +82,39 @@ class DynamicSCM():
             dist = f"{dist} * N"
         return dist
 
+    def check_and_fix_num_elements(self, list_to_check, desired_count):
+        if len(list_to_check) > desired_count:
+            list_to_check = list_to_check[:desired_count]
+        elif len(list_to_check) < desired_count:
+            diff = desired_count - len(list_to_check)
+            list_to_check.extend(diff * [0])
+        return list_to_check
+
     def get_parent_levels(self, levels_and_distributions):
         '''
-        This method selects the parent levels from which the
-        parents for a new node needs to be selected. It does
-        so by decreasing probabilities from the lowest to the
-        highest level so that the closest parent level has
-        the highest probability of getting selected
+        Applies a probalistic method to select the parent levels 
+        from which the parents for a new node needs to be selected. 
+        It does so by checking if the user has provided any 
+        desired probabilities. If yes, the specified probabilities 
+        are used else an exponentially decreasing function is used
+        to derive the probabilities such that the highest 
+        probability is given to the immediate parent and the
+        lowest probability to the greatest grand parent.
         '''
-        levels = list(range(len(levels_and_distributions)))
-        level_probs = [round(math.exp(1.5 * l), 1) for l in levels]
         parent_levels = []
-        for l in levels:
-            possible_level = random.choices(levels, level_probs, k=1)[0]
-            if possible_level not in parent_levels:
-                parent_levels.append(possible_level)
+        num_levels = len(levels_and_distributions)
+        levels = list(reversed(range(num_levels)))
+
+        if self.parent_levels_probs:
+            level_probs = self.parent_levels_probs
+            level_probs = self.check_and_fix_num_elements(
+                level_probs, num_levels)
+        else:
+            level_probs = [round(math.exp(1.5 * l), 1) for l in levels]
+
+        if levels:
+            parent_levels = random.choices(levels, level_probs, k=num_levels)
+            parent_levels = list(set(parent_levels))
         return parent_levels
 
     def get_min_max_parents(self, possible_parents):
@@ -109,15 +131,19 @@ class DynamicSCM():
 
     def get_parents(self, levels_and_distributions):
         '''
-        This method randomly chooses the parent nodes for a new child 
-        node that is getting created. It does that by first getting the 
-        parent levels from which it will select the parents. Then it 
-        iterates over these levels. From each level it samples a random 
-        set of parents between the mix and max number of parents and adds 
-        it to the parents list. Because the sampling is done at each 
-        level the final list may now have more than the max number of 
-        parents. Hence once again max number of parents is sampled from 
-        the final parents list
+        Randomly chooses the parent nodes for a new child node that 
+        is getting created using the following process:
+        1. Get the parent levels from which to select the parents. 
+        2. From each selected level 
+            a. Get the min and max number of parents
+            b. Generate a random number between min and max
+            c. Randomnly select those many parents from all the 
+               parents at this level
+            d. Add the selected parents to the parent list
+        Because the sampling is done at each level the final list 
+        may now have more than the max number of parents. Hence 
+        once again max number of parents is sampled from the final 
+        parents list.
         '''
         parents = []
         parent_levels = self.get_parent_levels(levels_and_distributions)
@@ -210,6 +236,8 @@ class DynamicSCM():
 
 if __name__ == "__main__":
     input_nodes = [2, 2, 2, 2, 2, 1]
-    dSCM = DynamicSCM()
+    dSCM = DynamicSCM(min_parents=2,
+                      max_parents=2,
+                      parent_levels_probs=[0.5, 0.5])
     scm = dSCM.create(input_nodes)
     scm.plot(node_size=250, savepath="scm.jpg")
