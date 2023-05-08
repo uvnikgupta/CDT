@@ -19,6 +19,7 @@ The installation script, `install_cdt.sh`, for ubuntu is under `installation\ubu
 1. Windows 10
 2. Anaconda installed
 3. Run the Powershell with admin privlidges
+4. execute <code>conda init powershell</code> and restart Powershell with admin privlidges
 
 To check if the installation was successfull you can run either one or both of the python scripts avaialble in this repo<br>
 <code>python3 CDT/cdt_basic.py</code><br>
