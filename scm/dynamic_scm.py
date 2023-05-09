@@ -4,14 +4,22 @@ import random, math, copy
 
 class DynamicSCM():
     def __init__(self,
-                 distributions_file="distributions.txt",
-                 min_parents=1,
-                 max_parents=10000,
-                 parent_levels_probs=[]):
+                 min_parents: int = 1,
+                 max_parents: int = 10000,
+                 parent_levels_probs: list[float] = [],
+                 distributions_file: str = "distributions.txt",
+                 simple_operations: dict[str, int] = {},
+                 complex_operations: dict[str, int] = {}):
         self.__distributions_file = distributions_file
         self.__max_parents = max_parents
         self.__min_parents = min_parents
         self.__parent_levels_probs = parent_levels_probs
+        self.__simple_operations = {
+            "+": 1
+        } if not simple_operations else simple_operations
+        self.__complex_operations = {
+            False: 1
+        } if not complex_operations else complex_operations
         self.__distributions = []
         self.__data = None
 
@@ -52,16 +60,20 @@ class DynamicSCM():
             self.__read_distributions_from_file()
         return self.__distributions
 
-    def __add_noise(self, dist):
+    def __add_noise(self, dist: str):
         noise_ops = [False, True]
-        op = random.choices(noise_ops, weights=(5, 1), k=1)[0]
-        if op:
-            dist = f"( {dist} ) * N"
+        noise = random.choices(noise_ops, weights=(5, 1), k=1)[0]
+        if noise:
+            if "*" in self.__simple_operations:
+                dist = f"( {dist} ) * N"
+            else:
+                dist = f"( {dist} ) + N"
         return dist
 
-    def __add_complex_operation(self, dist):
-        complex_ops = [False, "sqrt", "**2"]
-        op = random.choices(complex_ops, weights=(100, 1, 1), k=1)[0]
+    def __add_complex_operation(self, dist: str):
+        complex_ops = list(self.__complex_operations.keys())
+        weights = list(self.__complex_operations.values())
+        op = random.choices(complex_ops, weights=weights, k=1)[0]
         if op:
             if "*" in op:
                 dist = f"( {dist} ){op}"
@@ -69,17 +81,20 @@ class DynamicSCM():
                 dist = f"{op} ( {dist} )"
         return dist
 
-    def __create_simple_operation(self, dist, parent):
-        simple_ops = ["+", "*", "()"]
-        op_1 = random.choices(simple_ops, weights=(10, 10, 1), k=1)[0]
+    def __create_simple_operation(self, dist: str, parent: str):
+        simple_ops = list(self.__simple_operations.keys())
+        weights = list(self.__simple_operations.values())
+        op_1 = random.choices(simple_ops, weights=weights, k=1)[0]
         if op_1 == "()":
-            op_2 = random.choices(simple_ops, weights=(1, 1, 0), k=1)[0]
+            weights[[n for n, sop in enumerate(simple_ops)
+                     if sop == '()'][0]] = 0
+            op_2 = random.choices(simple_ops, weights=weights, k=1)[0]
             dist = f"{op_1[0]} {dist} {op_2} {parent} {op_1[1]}"
         else:
             dist = f"{dist} {op_1} {parent}"
         return dist
 
-    def __get_node_formula(self, parents):
+    def __get_node_formula(self, parents: list[str]):
         if not parents:
             dist = "N"
         else:
@@ -98,7 +113,8 @@ class DynamicSCM():
             dist = f"{dist} * N"
         return dist
 
-    def __check_and_fix_num_elements(self, list_to_check, desired_count):
+    def __check_and_fix_num_elements(self, list_to_check: list,
+                                     desired_count: int):
         if len(list_to_check) > desired_count:
             list_to_check = list_to_check[:desired_count]
         elif len(list_to_check) < desired_count:
@@ -202,19 +218,20 @@ class DynamicSCM():
         scm = SCM(scm_dists)
         return scm
 
-    def __create_names_and_num_nodes_dict(self, nodes_per_level, level_names):
+    def __create_names_and_num_nodes_dict(self, nodes_per_level: list[int],
+                                          level_names: list[str]):
         level_name_numnodes = {}
         for n, name in enumerate(level_names):
             level_name_numnodes[n] = {'name': name, 'num': nodes_per_level[n]}
         return level_name_numnodes
 
-    def __get_level_names(self, numnodes_per_level):
+    def __get_level_names(self, numnodes_per_level: list[int]):
         level_names = []
         for n in range(len(numnodes_per_level)):
             level_names.append(chr(65 + n))
         return level_names
 
-    def __create_scm_from_nodes_list(self, nodes_list):
+    def __create_scm_from_nodes_list(self, nodes_list: list[int]):
         level_names = self.__get_level_names(nodes_list)
         level_name_numnodes = self.__create_names_and_num_nodes_dict(
             nodes_list, level_names)
@@ -222,7 +239,7 @@ class DynamicSCM():
         scm = self.__create_scm(level_name_numnodes)
         return scm
 
-    def __get_numnodes_per_level(self, input_nodes):
+    def __get_numnodes_per_level(self, input_nodes: int):
         nodes = input_nodes
         levels = int(math.pow(nodes, 1 / 3))
         numnodes_per_level = []
@@ -237,7 +254,7 @@ class DynamicSCM():
 
         return numnodes_per_level
 
-    def __create_scm_from_num_nodes(self, input_nodes):
+    def __create_scm_from_num_nodes(self, input_nodes: int):
         nodes_list = self.__get_numnodes_per_level(input_nodes)
         scm = self.__create_scm_from_nodes_list(nodes_list)
         return scm
