@@ -30,7 +30,8 @@ To check if the installation was successfull you can run either one or both of t
 #### Issues you may face :face_with_head_bandage: :
 
 1. **Timeout while installing an ubuntu or python library** :hourglass_flowing_sand: --> Check if you have provided the correct proxy
-2. **Timeout while installing R library** :hourglass_flowing_sand: --> Some systems may have the sudoers configuration set to reset the environment variables when running sudo. In this case, the -E option may not work and you may need to modify the sudoers configuration to allow the http_proxy environment variable to be preserved<br><br>
+2. **Timeout while installing R library** :hourglass_flowing_sand: --> Some systems may have the sudoers configuration set to reset the environment variables when running sudo. In this case, the -E option may not work and you may need to modify the sudoers configuration to allow the http_proxy environment variable to be preserved
+3. **Issue while installing some of the R libraries on Windows** 🧩 --> After the installation is over you may notice that running cdt_basic.py gives an error that library pcalg is not installed. This happens sometimes and I am not sure of the reason. The fix is to go to <code>C:\\Program Files\\</code>, delete the <code>R</code> folder and restart the installation<br><br>
 
 <hr>
 Below is the process that I followed to get this to work on ubuntu. This is for my reference for a future me but if you are also interested to know about the grind, feel free to read through.:nerd_face:<br><br>
