@@ -1,6 +1,7 @@
 from scmodels import SCM
 import random, math, copy
 
+from node_formula import NodeFormula as NF
 
 class DynamicSCM():
     def __init__(self,
@@ -14,12 +15,8 @@ class DynamicSCM():
         self.__max_parents = max_parents
         self.__min_parents = min_parents
         self.__parent_levels_probs = parent_levels_probs
-        self.__simple_operations = {
-            "+": 1
-        } if not simple_operations else simple_operations
-        self.__complex_operations = {
-            False: 1
-        } if not complex_operations else complex_operations
+        self.__simple_operations = simple_operations
+        self.__complex_operations = complex_operations
         self.__distributions = []
         self.__data = None
 
@@ -60,59 +57,19 @@ class DynamicSCM():
             self.__read_distributions_from_file()
         return self.__distributions
 
-    def __add_noise(self, dist: str):
-        noise_ops = [False, True]
-        noise = random.choices(noise_ops, weights=(5, 1), k=1)[0]
-        if noise:
-            if "*" in self.__simple_operations:
-                dist = f"( {dist} ) * N"
-            else:
-                dist = f"( {dist} ) + N"
-        return dist
-
-    def __add_complex_operation(self, dist: str):
-        complex_ops = list(self.__complex_operations.keys())
-        weights = list(self.__complex_operations.values())
-        op = random.choices(complex_ops, weights=weights, k=1)[0]
-        if op:
-            if "*" in op:
-                dist = f"( {dist} ){op}"
-            else:
-                dist = f"{op} ( {dist} )"
-        return dist
-
-    def __create_simple_operation(self, dist: str, parent: str):
-        simple_ops = list(self.__simple_operations.keys())
-        weights = list(self.__simple_operations.values())
-        op_1 = random.choices(simple_ops, weights=weights, k=1)[0]
-        if op_1 == "()":
-            weights[[n for n, sop in enumerate(simple_ops)
-                     if sop == '()'][0]] = 0
-            op_2 = random.choices(simple_ops, weights=weights, k=1)[0]
-            dist = f"{op_1[0]} {dist} {op_2} {parent} {op_1[1]}"
-        else:
-            dist = f"{dist} {op_1} {parent}"
-        return dist
-
     def __get_node_formula(self, parents: list[str]):
+        nf = NF(self.__simple_operations, self.__complex_operations)
         if not parents:
-            dist = "N"
+            nf.add_noise()
         else:
-            dist = f"{parents[0]}"
-            count = 0
+            nf.init(f"{parents[0]}")
             for p in parents[1:]:
-                dist = self.__create_simple_operation(dist, p)
-                count += 1
-
-                if count > 2:
-                    dist = self.__add_complex_operation(dist)
-                    count = 0
-
-                dist = self.__add_noise(dist)
-
-            dist = f"{dist} * N"
-        return dist
-
+                nf.do_simple_operation(p)
+                nf.add_complex_operation()
+           
+            nf.add_noise()
+        return nf.get_formula_str()
+    
     def __check_and_fix_num_elements(self, list_to_check: list,
                                      desired_count: int):
         if len(list_to_check) > desired_count:
@@ -271,9 +228,14 @@ class DynamicSCM():
 
 
 if __name__ == "__main__":
-    input_nodes = [2, 2, 2, 2, 2, 1]
-    dSCM = DynamicSCM(min_parents=2,
-                      max_parents=2,
-                      parent_levels_probs=[0.5, 0.5])
+    input_nodes = [6, 4, 6, 2, 2, 1]
+    dSCM = DynamicSCM(complex_operations={False:1, "sqrt":1})
     scm = dSCM.create(input_nodes)
-    scm.plot(node_size=250, savepath="scm.jpg")
+    scm.plot(node_size=250)
+
+    # input_nodes = [2, 2, 2, 2, 2, 1]
+    # dSCM = DynamicSCM(min_parents=2,
+    #                   max_parents=2,
+    #                   parent_levels_probs=[0.5, 0.5])
+    # scm = dSCM.create(input_nodes)
+    # scm.plot(node_size=250, savepath="scm.jpg")
