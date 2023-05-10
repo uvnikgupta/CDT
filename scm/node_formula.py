@@ -72,6 +72,6 @@ class NodeFormula():
                 self.__formula_list.append({"type": "operation", "value": "+"})
                 self.__formula_list.append({"type": "node", "value": "N"})
 
-    def get_formula_str(self):
+    def __str__(self):
         formula_str = " ".join([element["value"] for element in self.__formula_list])
         return formula_str

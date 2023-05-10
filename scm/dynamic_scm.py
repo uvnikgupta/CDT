@@ -68,7 +68,7 @@ class DynamicSCM():
                 nf.add_complex_operation()
            
             nf.add_noise()
-        return nf.get_formula_str()
+        return str(nf)
     
     def __check_and_fix_num_elements(self, list_to_check: list,
                                      desired_count: int):
