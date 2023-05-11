@@ -62,8 +62,7 @@ class DynamicSCM():
         if not parents:
             nf.add_noise()
         else:
-            nf.init(f"{parents[0]}")
-            for p in parents[1:]:
+            for p in parents:
                 nf.do_simple_operation(p)
                 nf.add_complex_operation()
            

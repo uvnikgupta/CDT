@@ -8,43 +8,50 @@ class NodeFormula():
         self.__complex_operations = complex_operations if complex_operations else {False: 1}
         self.__formula_list = []
 
-    def __check_initialization(self):
-        if not self.__formula_list:
-            raise Exception("NodeFormula not initialized. \
-                            Initialize it with a seed node before doing any operation") 
-
-    def init(self, initial_node:str):
-        self.__formula_list = [{"type" : "node",
-                                "value" : initial_node}]
-    
     def do_simple_operation(self, node:str):
-        self.__check_initialization()
-
-        simple_ops = list(self.__simple_operations.keys())
-        weights = list(self.__simple_operations.values())
-        multiplier = round(random.uniform(0.2, 4.0), 1)
-        node = str(multiplier) + "*" + node
-
-        op_1 = random.choices(simple_ops, weights=weights, k=1)[0]
-        if op_1 == "()":
-            weights[[n for n, sop in enumerate(simple_ops)
-                     if sop == '()'][0]] = 0
-            op_2 = random.choices(simple_ops, weights=weights, k=1)[0]
-            prev_node = self.__formula_list[-1]["value"]
-            self.__formula_list[-1]["value"] = f"{op_1[0]} {prev_node}"
-            self.__formula_list.append({"type": "operation", "value": op_2})
-            self.__formula_list.append({"type": "node", "value": f"{node} {op_1[1]}"})
+        if not self.__formula_list:
+            self.__formula_list = [{"type" : "node",
+                                    "value" : node}]
         else:
-            self.__formula_list.append({"type": "operation", "value": op_1})
-            self.__formula_list.append({"type": "node", "value": node})
+            simple_ops = list(self.__simple_operations.keys())
+            weights = list(self.__simple_operations.values())
+            multiplier = round(random.uniform(0.2, 4.0), 1)
+            node = str(multiplier) + "*" + node
+
+            op_1 = random.choices(simple_ops, weights=weights, k=1)[0]
+            if op_1 == "()":
+                '''
+                If the operation was empty braces, find the index of it's
+                occurance in simple_ops list and set the weight for it to
+                0. Then select a simple operation again, apply that operation
+                and encapsulate the expression in the braces
+                '''
+                weights[[n for n, sop in enumerate(simple_ops)
+                        if sop == '()'][0]] = 0
+                op_2 = random.choices(simple_ops, weights=weights, k=1)[0]
+                prev_node = self.__formula_list[-1]["value"]
+                self.__formula_list[-1]["value"] = f"{op_1[0]} {prev_node}"
+                self.__formula_list.append({"type": "operation", "value": op_2})
+                self.__formula_list.append({"type": "node", "value": f"{node} {op_1[1]}"})
+            else:
+                self.__formula_list.append({"type": "operation", "value": op_1})
+                self.__formula_list.append({"type": "node", "value": node})
 
     def add_complex_operation(self):
-        self.__check_initialization()
+        if not self.__formula_list:
+            raise Exception("Complex operation can be added only after a simple operation")
 
         complex_ops = list(self.__complex_operations.keys())
         weights = list(self.__complex_operations.values())
         op = random.choices(complex_ops, weights=weights, k=1)[0]
         if op:
+            '''
+            Find the indexes of all the node types in the list, calculate how many they are
+            and randomly generate a number between 1 and the log of the number of nodes. This 
+            becomes the start of the expression to apply the complex operation. The end is 
+            the last item in the list. If the start and the end comes out to be the same, 
+            make the end node the same as the start node.
+            '''
             idx = [n for n, ele in enumerate(self.__formula_list) if ele["type"] == 'node']
             max_nodes_to_consider = math.ceil(math.log(len(idx)) + 1)
             num_nodes_in_operation = random.randint(1, max_nodes_to_consider)
