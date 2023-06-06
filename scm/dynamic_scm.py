@@ -52,13 +52,13 @@ class DynamicSCM():
             {"type": 2, 
              "func": 'f"Die(sides={random.randint(4, 10)})"'},
             {"type": 2, 
-             "func": 'f"FiniteRV({{1: 0.33, 2: 0.34, 3: 0.33}})"'},
+             "func": 'f"FiniteRV({{1:0.33, 2:0.34, 3:0.33}})"'},
             {"type": 2, 
              "func": 'f"Geometric(p={round(random.uniform(0.05, 1.00), 2)})"'},
             {"type": 2, 
              "func": 'f"Poisson(lamda={round(random.uniform(0.05, 1.00), 1)})"'},
             {"type": 2, 
-             "func": 'f"FiniteRV({{{random.randint(5, 10)}: 0.5, {random.randint(0, 3)}: 0.16, {random.randint(15, 25)}: 0.17, {random.randint(30, 50)}: 0.17}})"'}
+             "func": 'f"FiniteRV({{{random.randint(5, 10)}:0.5, {random.randint(0, 3)}:0.16, {random.randint(15, 25)}:0.17, {random.randint(30, 50)}: 0.17}})"'}
         ]
         return dists
 
@@ -68,22 +68,12 @@ class DynamicSCM():
         else:
             self.__distributions = [d['func'] for d in distributions if d['type'] == self.__distribution_type]
 
-    def __read_distributions_from_file(self):
-        try:
-            with open(self.__distributions_file) as file:
-                self.__distributions = file.readlines()
-        except:
-            print(
-                f"WARNING: {self.__distributions_file} not found. Loading default set of distributions."
-            )
-            self.__distributions = self.__get_default_distributions()
-
     def __read_distributions_yaml(self):
         try:
             with open(self.__distributions_file, 'r') as file:
                 distributions = yaml.safe_load(file)
-        except :
-            print(f"WARNING: Error while parsing {self.__distributions_file}")
+        except Exception as e:
+            print(f"WARNING: Error while parsing {self.__distributions_file}: {e}")
             print("**Loading default set of distributions.**")
             distributions = self.__get_default_distributions()
         

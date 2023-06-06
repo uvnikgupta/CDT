@@ -11,20 +11,18 @@ class NodeFormula():
         self.__formula_list = []
 
     def do_simple_operation(self, node:str):
+        if self.__distribution_type == 2:
+            multiplier = random.randint(1, 7)
+        else:
+            multiplier = round(random.uniform(0.2, 4.0), 1)
+        node = str(multiplier) + "*" + node
+        
         if not self.__formula_list:
             self.__formula_list = [{"type" : "node",
                                     "value" : node}]
         else:
             simple_ops = list(self.__simple_operations.keys())
             weights = list(self.__simple_operations.values())
-
-            if self.__distribution_type == 2:
-                multiplier = random.randint(1, 4)
-            else:
-                multiplier = round(random.uniform(0.2, 4.0), 1)
-                
-            node = str(multiplier) + "*" + node
-
             op_1 = random.choices(simple_ops, weights=weights, k=1)[0]
             if op_1 == "()":
                 '''

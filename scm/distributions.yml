@@ -25,10 +25,10 @@
 - type: 2
   func: f"Die(sides={random.randint(4, 10)})"
 - type: 2
-  func: f"FiniteRV({{1: 0.33, 2: 0.34, 3: 0.33}})"
+  func: f"FiniteRV({{1:0.33, 2:0.34, 3:0.33}})"
 - type: 2
   func: f"Geometric(p={round(random.uniform(0.05, 1.00), 2)})"
 - type: 2
   func: f"Poisson(lamda={round(random.uniform(0.05, 1.00), 1)})"
 - type: 2
-  func: f"FiniteRV({{{random.randint(5, 10)}: 0.5, {random.randint(0, 3)}: 0.16, {random.randint(15, 25)}: 0.17, {random.randint(30, 50)}: 0.17}})"
+  func: f"FiniteRV({{{random.randint(5, 10)}:0.5, {random.randint(0, 3)}:0.16, {random.randint(15, 25)}:0.17, {random.randint(30, 50)}:0.17}})"
