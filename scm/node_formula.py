@@ -1,9 +1,11 @@
 import random, math
 
 class NodeFormula():
-    def __init__(self, 
+    def __init__(self,
+                 distribution_type: int,
                  simple_operations: dict[str, int] = {},
                  complex_operations: dict[str, int] = {}) -> None:
+        self.__distribution_type = distribution_type
         self.__simple_operations = simple_operations if simple_operations else {"+": 1}
         self.__complex_operations = complex_operations if complex_operations else {False: 1}
         self.__formula_list = []
@@ -15,7 +17,12 @@ class NodeFormula():
         else:
             simple_ops = list(self.__simple_operations.keys())
             weights = list(self.__simple_operations.values())
-            multiplier = round(random.uniform(0.2, 4.0), 1)
+
+            if self.__distribution_type == 2:
+                multiplier = random.randint(1, 4)
+            else:
+                multiplier = round(random.uniform(0.2, 4.0), 1)
+                
             node = str(multiplier) + "*" + node
 
             op_1 = random.choices(simple_ops, weights=weights, k=1)[0]

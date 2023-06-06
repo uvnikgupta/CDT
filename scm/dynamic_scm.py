@@ -1,5 +1,6 @@
 from scmodels import SCM
 import random, math, copy
+import yaml
 
 from node_formula import NodeFormula as NF
 
@@ -8,10 +9,12 @@ class DynamicSCM():
                  min_parents: int = 1,
                  max_parents: int = 10000,
                  parent_levels_probs: list[float] = [],
-                 distributions_file: str = "distributions.txt",
+                 distributions_file: str = "distributions.yml",
+                 distribution_type: int = None,
                  simple_operations: dict[str, int] = {},
                  complex_operations: dict[str, int] = {}):
         self.__distributions_file = distributions_file
+        self.__distribution_type = distribution_type
         self.__max_parents = max_parents
         self.__min_parents = min_parents
         self.__parent_levels_probs = parent_levels_probs
@@ -22,25 +25,48 @@ class DynamicSCM():
 
     def __get_default_distributions(self):
         dists = [
-            'f"LogLogistic(alpha={random.randint(5, 20)}, beta={round(random.uniform(1,3.5),1)})"',
-            'f"Normal(mean={random.randint(0,10)}, std={round(random.uniform(1,20),2)})"',
-            'f"LogNormal(mean={random.randint(0,10)}, std={round(random.uniform(1,20),2)})"',
-            'f"Benini(alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(.1, 1.0), 1)}, sigma={round(random.uniform(.1, 1.0), 1)})"',
-            'f"Beta(alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(.1, 1.0), 1)})"',
-            'f"Exponential(rate={round(random.uniform(.5, 10.0), 1)})"',
-            'f"FDistribution(d1={random.randint(2, 4)}, d2={random.randint(5, 8)})"',
-            'f"Gamma(k={round(random.uniform(0.1, 4.0), 1)}, theta={round(random.uniform(2.0, 8.0), 1)})"',
-            'f"GammaInverse(a={random.randint(1, 4)}, b={random.randint(2, 8)})"',
-            'f"Bernoulli({round(random.random(), 1)})"',
-            'f"Binomial(n={random.randint(10, 20)}, p={round(random.uniform(0.05, 1.00), 2)}, succ={random.randint(2, 10)})"',
-            'f"BetaBinomial(n={random.randint(10, 100)}, alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(2, 5),1)})"',
-            'f"Die(sides={random.randint(4, 10)})"',
-            'f"FiniteRV({{1: 0.33, 2: 0.34, 3: 0.33}})"',
-            'f"Geometric(p={round(random.uniform(0.05, 1.00), 2)})"',
-            'f"Poisson(lamda={round(random.uniform(0.05, 1.00), 1)})"',
-            'f"FiniteRV({{{random.randint(5, 10)}: 0.5, {random.randint(0, 3)}: 0.16, {random.randint(15, 25)}: 0.17, {random.randint(30, 50)}: 0.17}})"'
+            {"type": 1, 
+             "func": 'f"LogLogistic(alpha={random.randint(5, 20)}, beta={round(random.uniform(1,3.5),1)})"'},
+            {"type": 1, 
+             "func": 'f"Normal(mean={random.randint(0,10)}, std={round(random.uniform(1,20),2)})"'},
+            {"type": 1, 
+             "func": 'f"LogNormal(mean={random.randint(0,10)}, std={round(random.uniform(1,20),2)})"'},
+            {"type": 1, 
+             "func": 'f"Benini(alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(.1, 1.0), 1)}, sigma={round(random.uniform(.1, 1.0), 1)})"'},
+            {"type": 1, 
+             "func": 'f"Beta(alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(.1, 1.0), 1)})"'},
+            {"type": 1, 
+             "func": 'f"Exponential(rate={round(random.uniform(.5, 10.0), 1)})"'},
+            {"type": 1, 
+             "func": 'f"FDistribution(d1={random.randint(2, 4)}, d2={random.randint(5, 8)})"'},
+            {"type": 1, 
+             "func": 'f"Gamma(k={round(random.uniform(0.1, 4.0), 1)}, theta={round(random.uniform(2.0, 8.0), 1)})"'},
+            {"type": 1, 
+             "func": 'f"GammaInverse(a={random.randint(1, 4)}, b={random.randint(2, 8)})"'},
+            {"type": 2, 
+             "func": 'f"Bernoulli({round(random.random(), 1)})"'},
+            {"type": 2, 
+             "func": 'f"Binomial(n={random.randint(10, 20)}, p={round(random.uniform(0.05, 1.00), 2)}, succ={random.randint(2, 10)})"'},
+            {"type": 2, 
+             "func": 'f"BetaBinomial(n={random.randint(10, 100)}, alpha={round(random.uniform(.1, 1.0), 1)}, beta={round(random.uniform(2, 5),1)})"'},
+            {"type": 2, 
+             "func": 'f"Die(sides={random.randint(4, 10)})"'},
+            {"type": 2, 
+             "func": 'f"FiniteRV({{1: 0.33, 2: 0.34, 3: 0.33}})"'},
+            {"type": 2, 
+             "func": 'f"Geometric(p={round(random.uniform(0.05, 1.00), 2)})"'},
+            {"type": 2, 
+             "func": 'f"Poisson(lamda={round(random.uniform(0.05, 1.00), 1)})"'},
+            {"type": 2, 
+             "func": 'f"FiniteRV({{{random.randint(5, 10)}: 0.5, {random.randint(0, 3)}: 0.16, {random.randint(15, 25)}: 0.17, {random.randint(30, 50)}: 0.17}})"'}
         ]
         return dists
+
+    def __filter_distributions(self, distributions):
+        if self.__distribution_type is None:
+            self.__distributions = [d['func'] for d in distributions]
+        else:
+            self.__distributions = [d['func'] for d in distributions if d['type'] == self.__distribution_type]
 
     def __read_distributions_from_file(self):
         try:
@@ -52,13 +78,26 @@ class DynamicSCM():
             )
             self.__distributions = self.__get_default_distributions()
 
+    def __read_distributions_yaml(self):
+        try:
+            with open(self.__distributions_file, 'r') as file:
+                distributions = yaml.safe_load(file)
+        except :
+            print(f"WARNING: Error while parsing {self.__distributions_file}")
+            print("**Loading default set of distributions.**")
+            distributions = self.__get_default_distributions()
+        
+        self.__filter_distributions(distributions)
+
     def __get_distributions(self):
         if not self.__distributions:
-            self.__read_distributions_from_file()
+            self.__read_distributions_yaml()
         return self.__distributions
 
     def __get_node_formula(self, parents: list[str]):
-        nf = NF(self.__simple_operations, self.__complex_operations)
+        nf = NF(self.__distribution_type,
+                self.__simple_operations, 
+                self.__complex_operations)
         if not parents:
             nf.add_noise()
         else:
@@ -228,7 +267,8 @@ class DynamicSCM():
 
 if __name__ == "__main__":
     input_nodes = [6, 4, 6, 2, 2, 1]
-    dSCM = DynamicSCM(complex_operations={False:1, "sqrt":1})
+    dSCM = DynamicSCM(distribution_type=2,
+                      complex_operations={False:1, "sqrt":1})
     scm = dSCM.create(input_nodes)
     scm.plot(node_size=250)
 
