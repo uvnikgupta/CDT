@@ -27,21 +27,26 @@ logger = logging.getLogger(__name__)
 configs = [
     {
         "name" : "config_1",
-        "nodes": [2,2,2,2,2,1],
-        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], simple_operations={"+": 1})'
+        "nodes": [10,5,2],
+        "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], simple_operations={"+": 1})'
     },
     {
         "name" : "config_2",
         "nodes": [2,2,2,2,2,1],
-        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[0.4,0.1,0.5])'
+        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], simple_operations={"+": 1})'
     },
     {
         "name" : "config_3",
+        "nodes": [2,2,2,2,2,1],
+        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[0.4,0.1,0.5])'
+    },
+    {
+        "name" : "config_4",
         "nodes": 40,
         "dSCM" : 'DynamicSCM()'
     },
     {
-        "name" : "config_4",
+        "name" : "config_5",
         "nodes": [150, 50, 10, 3],
         "dSCM" : 'DynamicSCM(max_parents=20, complex_operations={})'
     }
@@ -213,3 +218,5 @@ for c in configs:
             
             step = step + 1
             log_progress(total_steps, step, c['name'], s, m['name'])
+        row = row + 1
+        col = 0
