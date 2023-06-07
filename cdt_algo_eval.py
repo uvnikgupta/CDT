@@ -126,7 +126,7 @@ def get_algo_scores(model, scm, size):
             scores["sid"].append(0)
             scores["shd"].append(0)
             scores["duration"].append(0)
-            scores["errors"].append(e)
+            scores["errors"].append(f"Error: {e}")
     return scores
 
 def init_scores_file(file_name):
