@@ -2,7 +2,7 @@ from scmodels import SCM
 import random, math, copy
 import yaml
 
-from node_formula import NodeFormula as NF
+from .node_formula import NodeFormula as NF
 
 class DynamicSCM():
     def __init__(self,

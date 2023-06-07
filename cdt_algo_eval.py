@@ -11,7 +11,7 @@ from io import BytesIO
 from PIL import Image as PILImage
 from cdt.causality.graph import (GS, GES, GIES, PC, SAM, SAMv1, IAMB, Inter_IAMB, 
                                  Fast_IAMB, MMPC, LiNGAM, CAM, CCDr)
-from dynamic_scm import DynamicSCM
+from scm.dynamic_scm import DynamicSCM
 from cdt.metrics import precision_recall, SID, SHD
 
 # Init loging
