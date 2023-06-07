@@ -12,7 +12,7 @@ from cdt.metrics import precision_recall, SID, SHD
 logging.basicConfig(
     level=logging.DEBUG,  # Set the minimum logging level
     format='%(asctime)s - %(message)s',  # Define log message format
-    filename='cdt_algo_eval.log',  # Specify the log file name
+    filename='logs/cdt_algo_eval.log',  # Specify the log file name
     filemode='w'  # Set the file mode to 'write' (overwrite existing log)
 )
 logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ def log_progress(total_steps, step, config, sample, model):
     progress = round(step * 100/total_steps, 2)
     logger.info(f"Progress: {progress}% ({sample}, {config}, {model})")
 
-scores_file = "cdt_algo_scores.csv"
+scores_file = "logs/cdt_algo_scores.csv"
 init_scores_file(scores_file)
 sample_sizes = [100, 1000, 10000, 20000, 50000, 100000]
 
