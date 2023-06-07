@@ -131,11 +131,11 @@ def get_algo_scores(model, scm, size):
 
 def init_scores_file(file_name):
     with open(file_name, "w+") as f:
-        f.writelines(f"Config, Sample, Algo, AUPR, , SID, , SHD, , Duration, , Errors\n")
+        f.writelines(f"Sample, Config, Algo, AUPR, , SID, , SHD, , Duration, , Errors\n")
         f.writelines(f", , , mean, std, mean, std, mean, std, mean, std, \n")
 
 def write_score_data_to_file(file_name, config, sample, algo, scores):
-    line = f"{config}, {sample}, {algo}"
+    line = f"{sample}, {config}, {algo}"
     for key in ["aupr", "sid", "shd", "duration"]:
         mean = round(np.array(scores[key]).mean(), 2)
         std = round(np.array(scores[key]).std(), 2)
@@ -147,8 +147,8 @@ def write_score_data_to_file(file_name, config, sample, algo, scores):
             f.writelines(line + "\n")
         
 def log_progress(total_steps, step, config, sample, model):
-    progress = round(step/total_steps, 3) * 100
-    logger.info(f"Progress: {progress}% ({config}, {sample}, {model})")
+    progress = round(step * 100/total_steps, 2)
+    logger.info(f"Progress: {progress}% ({sample}, {config}, {model})")
 
 scores_file = "cdt_algo_scores.csv"
 init_scores_file(scores_file)
