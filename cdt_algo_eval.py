@@ -214,6 +214,7 @@ if __name__ == "__main__":
         save_plots_to_file(plots_file, row, 0, {"Original":{"dag": orig_dag}}, c['name'])
         for s in sample_sizes:
             scores = init_scores_dict()
+            total_steps = total_steps * 5
             for i in range(1, 6):
                 data = scm.sample(s)
                 for m in models:
