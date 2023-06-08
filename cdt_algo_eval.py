@@ -131,14 +131,13 @@ def write_score_data_to_file(file_name, scores, conf_name, num_samples):
         
 def log_progress(conf_name, num_samples, model=None, 
                  iter=None, step=None, exp=None):
-    global total_steps
-    progress = round(step * 100/total_steps, 2)
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if exp is None:
+        progress = round(step * 100/total_steps, 2)
         message = (f"Progress: {progress}% ({num_samples}, {conf_name}, {model}, iter_{iter})")
     else:
         message = (f"EXCEPTION for {num_samples} in {conf_name} \n {exp}")
     with open(log_file, "a+") as f:
+        ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         f.writelines(f"{ts} - {message}\n")
 
 def populate_algo_scores_and_dag(scores, algo_meta_data, orig_dag, data):
