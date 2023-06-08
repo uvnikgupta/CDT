@@ -14,7 +14,13 @@ from cdt.causality.graph import (GS, GES, GIES, PC, SAM, SAMv1, IAMB, Inter_IAMB
 from scm.dynamic_scm import DynamicSCM
 from cdt.metrics import precision_recall, SID, SHD
 
-# Create various DAG configurations
+# Exception class for catching exception while generating samples
+class GenerateSampleException(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+# Various DAG configurations
 configs = [
     {
         "name" : "config_1",
@@ -43,7 +49,7 @@ configs = [
     }
 ]
 
-# Create a disctionary of various CDT algorithms
+# Various CDT algorithms
 models = [
     {
         "name" : "GS",
@@ -100,21 +106,91 @@ models = [
     
 ]
 
+# Global variables
 scores_file = "logs/cdt_algo_scores.csv"
 plots_file = "logs/cdt_algo_plots.xlsx"
 log_file ='logs/cdt_algo_eval.log'
 sample_sizes = [100, 1000, 10000, 20000, 50000, 100000]
-total_steps = len(configs) * len(models) * len(sample_sizes)
+num_iterations = 5
+total_steps = len(configs) * len(models) * len(sample_sizes) * num_iterations
 step = 0
+row = 1
+   
+def write_score_data_to_file(file_name, scores, conf_name, num_samples):
+    for algo, score_data in scores.items():
+        line = f"{num_samples}, {conf_name}, {algo}"
+        for key in ["aupr", "sid", "shd", "duration"]:
+            mean = round(np.array(score_data[key]).mean(), 2)
+            std = round(np.array(score_data[key]).std(), 2)
+            line = line + ", " + f"{mean}, {std}"
 
-def log_progress(total_steps, step, config, sample, model, iter):
+        errors = ";".join(score_data["errors"])
+        line = line + ", " + errors
+        with open(file_name, "a") as f:
+                f.writelines(line + "\n")
+        
+def log_progress(conf_name, num_samples, model=None, 
+                 iter=None, step=None, exp=None):
+    global total_steps
     progress = round(step * 100/total_steps, 2)
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    message = (f"Progress: {progress}% ({sample}, {config}, {model}, iter_{iter})")
+    if exp is None:
+        message = (f"Progress: {progress}% ({num_samples}, {conf_name}, {model}, iter_{iter})")
+    else:
+        message = (f"EXCEPTION for {num_samples} in {conf_name} \n {exp}")
     with open(log_file, "a+") as f:
         f.writelines(f"{ts} - {message}\n")
 
-def save_plots_to_file(plots_file, row, col, scores, config, sample=""):
+def populate_algo_scores_and_dag(scores, algo_meta_data, orig_dag, data):
+    algo = algo_meta_data["model"]()
+    algo_name = algo_meta_data["name"]
+    try:
+        start = time.time()
+        prediction = algo.predict(data)
+        end = time.time()
+
+        aupr, _ = precision_recall(orig_dag, prediction)
+        sid_score = SID(orig_dag, prediction)
+        shd_score = SHD(orig_dag, prediction)
+        scores[algo_name]["aupr"].append(round(aupr, 3))
+        scores[algo_name]["sid"].append(int(sid_score))
+        scores[algo_name]["shd"].append(shd_score)
+        scores[algo_name]["duration"].append(round(end - start, 2))
+        scores[algo_name]["dag"] = prediction
+    except Exception as e:
+        scores[algo_name]["aupr"].append(0)
+        scores[algo_name]["sid"].append(0)
+        scores[algo_name]["shd"].append(0)
+        scores[algo_name]["duration"].append(0)
+        scores[algo_name]["errors"].append(f"Error: {e}")
+
+def populate_algo_scores_for_each_iteration(scm, scores, num_samples, data, iter, conf_name):
+    global step
+    for algo_meta_data in models:
+        populate_algo_scores_and_dag(scores, algo_meta_data, scm.dag, data)
+        step = step + 1
+        log_progress(conf_name, num_samples, algo_meta_data['name'], 
+                     iter, step)
+
+def init_scores_dict():
+    scores = {}
+    for m in models:
+        scores[m["name"]] = {"aupr":[], "sid":[], "shd":[], 
+                             "duration":[], "errors":[], "dag":None}
+    return scores
+
+def get_scores_for_each_sample_size(num_samples, scm, conf_name):
+    scores = init_scores_dict()
+    for i in range(1, num_iterations + 1):
+        try:
+            data = scm.sample(num_samples)
+        except Exception as e:
+            raise GenerateSampleException(e)
+        
+        populate_algo_scores_for_each_iteration(scm, scores, num_samples, data, i, conf_name)
+    return scores
+
+def save_plots_to_file(plots_file, row, col, scores, conf_name, sample=""):
     # Create a new Excel workbook to save and compate DAGs
     try:
         workbook = openpyxl.load_workbook(plots_file)
@@ -126,7 +202,7 @@ def save_plots_to_file(plots_file, row, col, scores, config, sample=""):
         dag = score_data["dag"]
         pos = graphviz_layout(dag, prog="dot")
         fig, ax = plt.subplots(1, 1, figsize=(3,2), dpi=150)
-        ax.set_title(f"{config}_{algo}_{sample}")
+        ax.set_title(f"{conf_name}_{algo}_{sample}")
 
         nx.draw(dag, pos=pos, ax=ax, with_labels=True, node_size=250, alpha=0.5)
         fig.savefig("plot.png")
@@ -150,54 +226,26 @@ def save_plots_to_file(plots_file, row, col, scores, config, sample=""):
     workbook.save(plots_file)
     workbook.close()
 
-def write_score_data_to_file(file_name, scores, config, sample):
-    for algo, score_data in scores.items():
-        line = f"{sample}, {config}, {algo}"
-        for key in ["aupr", "sid", "shd", "duration"]:
-            mean = round(np.array(score_data[key]).mean(), 2)
-            std = round(np.array(score_data[key]).std(), 2)
-            line = line + ", " + f"{mean}, {std}"
-
-        errors = ";".join(score_data["errors"])
-        line = line + ", " + errors
-        with open(file_name, "a") as f:
-                f.writelines(line + "\n")
-        
-def populate_algo_scores_and_dag(scores, algo_meta_data, dag, data):
-    algo = algo_meta_data["model"]()
-    algo_name = algo_meta_data["name"]
-    try:
-        start = time.time()
-        prediction = algo.predict(data)
-        end = time.time()
-
-        aupr, _ = precision_recall(dag, prediction)
-        sid_score = SID(dag, prediction)
-        shd_score = SHD(dag, prediction)
-        scores[algo_name]["aupr"].append(round(aupr, 3))
-        scores[algo_name]["sid"].append(int(sid_score))
-        scores[algo_name]["shd"].append(shd_score)
-        scores[algo_name]["duration"].append(round(end - start, 2))
-        scores[algo_name]["dag"] = prediction
-    except Exception as e:
-        scores[algo_name]["aupr"].append(0)
-        scores[algo_name]["sid"].append(0)
-        scores[algo_name]["shd"].append(0)
-        scores[algo_name]["duration"].append(0)
-        scores[algo_name]["errors"].append(f"Error: {e}")
-
 def get_scm(config):
     input_nodes = config["nodes"]
     dSCM = eval(config["dSCM"])
     scm = dSCM.create(input_nodes)
     return scm
 
-def init_scores_dict():
-    scores = {}
-    for m in models:
-        scores[m["name"]] = {"aupr":[], "sid":[], "shd":[], 
-                             "duration":[], "errors":[], "dag":None}
-    return scores
+def execute_config_for_various_sample_sizes(conf):
+    global row
+    scm = get_scm(conf)
+    orig_dag = scm.dag
+    save_plots_to_file(plots_file, row, 0, {"Original":{"dag": orig_dag}}, conf['name'])
+    for num_samples in sample_sizes:
+        try:
+            scores = get_scores_for_each_sample_size(num_samples, scm, conf['name'])
+        except GenerateSampleException as e:
+            log_progress(conf['name'], num_samples, exp=e)
+            continue
+        write_score_data_to_file(scores_file, scores, conf['name'], num_samples)
+        save_plots_to_file(plots_file, row, 1, scores, conf['name'], num_samples)  
+        row = row + 1
 
 def init_scores_file(file_name):
     with open(file_name, "w+") as f:
@@ -206,23 +254,5 @@ def init_scores_file(file_name):
 
 if __name__ == "__main__":
     init_scores_file(scores_file)
-    for c in configs:
-        scm = get_scm(c)
-        orig_dag = scm.dag
-        row = 0
-        row = row + 1
-        save_plots_to_file(plots_file, row, 0, {"Original":{"dag": orig_dag}}, c['name'])
-        for s in sample_sizes:
-            scores = init_scores_dict()
-            num_iterations = 5
-            for i in range(1, num_iterations + 1):
-                data = scm.sample(s)
-                for m in models:
-                    populate_algo_scores_and_dag(scores, m, orig_dag, data)
-                    step = step + 1
-                    log_progress(total_steps * num_iterations, step, c['name'], s, m['name'], i)
-
-            write_score_data_to_file(scores_file, scores, c['name'], s)
-            save_plots_to_file(plots_file, row, 1, scores, c['name'], s)
-                
-            row = row + 1
+    for conf in configs:
+        execute_config_for_various_sample_sizes(conf)
