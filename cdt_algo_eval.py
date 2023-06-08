@@ -116,19 +116,6 @@ total_steps = len(configs) * len(models) * len(sample_sizes) * num_iterations
 step = 0
 row = 1
    
-def write_score_data_to_file(file_name, scores, conf_name, num_samples):
-    for algo, score_data in scores.items():
-        line = f"{num_samples}, {conf_name}, {algo}"
-        for key in ["aupr", "sid", "shd", "duration"]:
-            mean = round(np.array(score_data[key]).mean(), 2)
-            std = round(np.array(score_data[key]).std(), 2)
-            line = line + ", " + f"{mean}, {std}"
-
-        errors = ";".join(score_data["errors"])
-        line = line + ", " + errors
-        with open(file_name, "a") as f:
-                f.writelines(line + "\n")
-        
 def log_progress(conf_name, num_samples, model=None, 
                  iter=None, step=None, exp=None):
     if exp is None:
@@ -178,6 +165,19 @@ def init_scores_dict():
                              "duration":[], "errors":[], "dag":None}
     return scores
 
+def write_score_data_to_file(file_name, scores, conf_name, num_samples):
+    for algo, score_data in scores.items():
+        line = f"{num_samples}, {conf_name}, {algo}"
+        for key in ["aupr", "sid", "shd", "duration"]:
+            mean = round(np.array(score_data[key]).mean(), 2)
+            std = round(np.array(score_data[key]).std(), 2)
+            line = line + ", " + f"{mean}, {std}"
+
+        errors = ";".join(score_data["errors"])
+        line = line + ", " + errors
+        with open(file_name, "a") as f:
+                f.writelines(line + "\n")
+        
 def get_scores_for_each_sample_size(num_samples, scm, conf_name):
     scores = init_scores_dict()
     for i in range(1, num_iterations + 1):
