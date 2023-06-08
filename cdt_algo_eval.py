@@ -214,13 +214,13 @@ if __name__ == "__main__":
         save_plots_to_file(plots_file, row, 0, {"Original":{"dag": orig_dag}}, c['name'])
         for s in sample_sizes:
             scores = init_scores_dict()
-            total_steps = total_steps * 5
-            for i in range(1, 6):
+            num_iterations = 5
+            for i in range(1, num_iterations + 1):
                 data = scm.sample(s)
                 for m in models:
                     populate_algo_scores_and_dag(scores, m, orig_dag, data)
                     step = step + 1
-                    log_progress(total_steps, step, c['name'], s, m['name'], i)
+                    log_progress(total_steps * num_iterations, step, c['name'], s, m['name'], i)
 
             write_score_data_to_file(scores_file, scores, c['name'], s)
             save_plots_to_file(plots_file, row, 1, scores, c['name'], s)
