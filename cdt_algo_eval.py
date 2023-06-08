@@ -52,13 +52,15 @@ configs = [
 # Various CDT algorithms
 models = [
     {
-        "name" : "GS",
+        "name" : "GS", 
         "model" : GS
     },
-    {
-        "name" : "GES",
-        "model" : GES
-    },
+    # GES algorithm seems to have a bug where it goes into infinite loop sometimes
+    # Moreover it seems that GES and GIES are essentially doing the same thing! 
+    # {
+    #     "name" : "GES",
+    #     "model" : GES
+    # },
     {
         "name" : "GIES",
         "model" : GIES
@@ -127,6 +129,19 @@ def log_progress(conf_name, num_samples, model=None,
         ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         f.writelines(f"{ts} - {message}\n")
 
+def write_score_data_to_file(file_name, scores, conf_name, num_samples):
+    for algo, score_data in scores.items():
+        line = f"{num_samples}, {conf_name}, {algo}"
+        for key in ["aupr", "sid", "shd", "duration"]:
+            mean = round(np.array(score_data[key]).mean(), 2)
+            std = round(np.array(score_data[key]).std(), 2)
+            line = line + ", " + f"{mean}, {std}"
+
+        errors = ";".join(score_data["errors"])
+        line = line + ", " + errors
+        with open(file_name, "a") as f:
+                f.writelines(line + "\n")
+        
 def populate_algo_scores_and_dag(scores, algo_meta_data, orig_dag, data):
     algo = algo_meta_data["model"]()
     algo_name = algo_meta_data["name"]
@@ -150,7 +165,7 @@ def populate_algo_scores_and_dag(scores, algo_meta_data, orig_dag, data):
         scores[algo_name]["duration"].append(0)
         scores[algo_name]["errors"].append(f"Error: {e}")
 
-def populate_algo_scores_for_each_iteration(scm, scores, num_samples, data, iter, conf_name):
+def execute_algo_for_each_iteration(scm, scores, num_samples, data, iter, conf_name):
     global step
     for algo_meta_data in models:
         populate_algo_scores_and_dag(scores, algo_meta_data, scm.dag, data)
@@ -165,20 +180,7 @@ def init_scores_dict():
                              "duration":[], "errors":[], "dag":None}
     return scores
 
-def write_score_data_to_file(file_name, scores, conf_name, num_samples):
-    for algo, score_data in scores.items():
-        line = f"{num_samples}, {conf_name}, {algo}"
-        for key in ["aupr", "sid", "shd", "duration"]:
-            mean = round(np.array(score_data[key]).mean(), 2)
-            std = round(np.array(score_data[key]).std(), 2)
-            line = line + ", " + f"{mean}, {std}"
-
-        errors = ";".join(score_data["errors"])
-        line = line + ", " + errors
-        with open(file_name, "a") as f:
-                f.writelines(line + "\n")
-        
-def get_scores_for_each_sample_size(num_samples, scm, conf_name):
+def get_algo_scores_for_each_sample_size(num_samples, scm, conf_name):
     scores = init_scores_dict()
     for i in range(1, num_iterations + 1):
         try:
@@ -186,14 +188,14 @@ def get_scores_for_each_sample_size(num_samples, scm, conf_name):
         except Exception as e:
             raise GenerateSampleException(e)
         
-        populate_algo_scores_for_each_iteration(scm, scores, num_samples, data, i, conf_name)
+        execute_algo_for_each_iteration(scm, scores, num_samples, data, i, conf_name)
     return scores
 
 def execute_config_for_various_sample_sizes(conf, scm):
     global row
     for num_samples in sample_sizes:
         try:
-            scores = get_scores_for_each_sample_size(num_samples, scm, conf['name'])
+            scores = get_algo_scores_for_each_sample_size(num_samples, scm, conf['name'])
         except GenerateSampleException as e:
             log_progress(conf['name'], num_samples, exp=e)
             continue
