@@ -190,6 +190,18 @@ def get_scores_for_each_sample_size(num_samples, scm, conf_name):
         populate_algo_scores_for_each_iteration(scm, scores, num_samples, data, i, conf_name)
     return scores
 
+def execute_config_for_various_sample_sizes(conf, scm):
+    global row
+    for num_samples in sample_sizes:
+        try:
+            scores = get_scores_for_each_sample_size(num_samples, scm, conf['name'])
+        except GenerateSampleException as e:
+            log_progress(conf['name'], num_samples, exp=e)
+            continue
+        write_score_data_to_file(scores_file, scores, conf['name'], num_samples)
+        save_plots_to_file(plots_file, row, 1, scores, conf['name'], num_samples)  
+        row = row + 1
+
 def save_plots_to_file(plots_file, row, col, scores, conf_name, sample=""):
     # Create a new Excel workbook to save and compate DAGs
     try:
@@ -232,21 +244,6 @@ def get_scm(config):
     scm = dSCM.create(input_nodes)
     return scm
 
-def execute_config_for_various_sample_sizes(conf):
-    global row
-    scm = get_scm(conf)
-    orig_dag = scm.dag
-    save_plots_to_file(plots_file, row, 0, {"Original":{"dag": orig_dag}}, conf['name'])
-    for num_samples in sample_sizes:
-        try:
-            scores = get_scores_for_each_sample_size(num_samples, scm, conf['name'])
-        except GenerateSampleException as e:
-            log_progress(conf['name'], num_samples, exp=e)
-            continue
-        write_score_data_to_file(scores_file, scores, conf['name'], num_samples)
-        save_plots_to_file(plots_file, row, 1, scores, conf['name'], num_samples)  
-        row = row + 1
-
 def init_scores_file(file_name):
     with open(file_name, "w+") as f:
         f.writelines(f"Sample, Config, Algo, AUPR, , SID, , SHD, , Duration, , Errors\n")
@@ -255,4 +252,6 @@ def init_scores_file(file_name):
 if __name__ == "__main__":
     init_scores_file(scores_file)
     for conf in configs:
-        execute_config_for_various_sample_sizes(conf)
+        scm = get_scm(conf)
+        save_plots_to_file(plots_file, row, 0, {"Original":{"dag": scm.dag}}, conf['name'])
+        execute_config_for_various_sample_sizes(conf, scm)
