@@ -1,3 +1,7 @@
+import multiprocessing
+from functools import partial
+import uuid
+import math
 import time
 import datetime
 import numpy as np
@@ -118,90 +122,10 @@ total_steps = len(configs) * len(models) * len(sample_sizes) * num_iterations
 step = 0
 row = 1
    
-def log_progress(conf_name, num_samples, model=None, 
-                 iter=None, step=None, exp=None):
-    if exp is None:
-        progress = round(step * 100/total_steps, 2)
-        message = (f"Progress: {progress}% ({num_samples}, {conf_name}, {model}, iter_{iter})")
-    else:
-        message = (f"EXCEPTION for {num_samples} in {conf_name} \n {exp}")
+def log_progress(message):
     with open(log_file, "a+") as f:
         ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         f.writelines(f"{ts} - {message}\n")
-
-def write_score_data_to_file(file_name, scores, conf_name, num_samples):
-    for algo, score_data in scores.items():
-        line = f"{num_samples}, {conf_name}, {algo}"
-        for key in ["aupr", "sid", "shd", "duration"]:
-            mean = round(np.array(score_data[key]).mean(), 2)
-            std = round(np.array(score_data[key]).std(), 2)
-            line = line + ", " + f"{mean}, {std}"
-
-        errors = ";".join(score_data["errors"])
-        line = line + ", " + errors
-        with open(file_name, "a") as f:
-                f.writelines(line + "\n")
-        
-def populate_algo_scores_and_dag(scores, algo_meta_data, orig_dag, data):
-    algo = algo_meta_data["model"]()
-    algo_name = algo_meta_data["name"]
-    try:
-        start = time.time()
-        prediction = algo.predict(data)
-        end = time.time()
-
-        aupr, _ = precision_recall(orig_dag, prediction)
-        sid_score = SID(orig_dag, prediction)
-        shd_score = SHD(orig_dag, prediction)
-        scores[algo_name]["aupr"].append(round(aupr, 3))
-        scores[algo_name]["sid"].append(int(sid_score))
-        scores[algo_name]["shd"].append(shd_score)
-        scores[algo_name]["duration"].append(round(end - start, 2))
-        scores[algo_name]["dag"] = prediction
-    except Exception as e:
-        scores[algo_name]["aupr"].append(0)
-        scores[algo_name]["sid"].append(0)
-        scores[algo_name]["shd"].append(0)
-        scores[algo_name]["duration"].append(0)
-        scores[algo_name]["errors"].append(f"Error: {e}")
-
-def execute_algo_for_each_iteration(scm, scores, num_samples, data, iter, conf_name):
-    global step
-    for algo_meta_data in models:
-        populate_algo_scores_and_dag(scores, algo_meta_data, scm.dag, data)
-        step = step + 1
-        log_progress(conf_name, num_samples, algo_meta_data['name'], 
-                     iter, step)
-
-def init_scores_dict():
-    scores = {}
-    for m in models:
-        scores[m["name"]] = {"aupr":[], "sid":[], "shd":[], 
-                             "duration":[], "errors":[], "dag":None}
-    return scores
-
-def get_algo_scores_for_each_sample_size(num_samples, scm, conf_name):
-    scores = init_scores_dict()
-    for i in range(1, num_iterations + 1):
-        try:
-            data = scm.sample(num_samples)
-        except Exception as e:
-            raise GenerateSampleException(e)
-        
-        execute_algo_for_each_iteration(scm, scores, num_samples, data, i, conf_name)
-    return scores
-
-def execute_config_for_various_sample_sizes(conf, scm):
-    global row
-    for num_samples in sample_sizes:
-        try:
-            scores = get_algo_scores_for_each_sample_size(num_samples, scm, conf['name'])
-        except GenerateSampleException as e:
-            log_progress(conf['name'], num_samples, exp=e)
-            continue
-        write_score_data_to_file(scores_file, scores, conf['name'], num_samples)
-        save_plots_to_file(plots_file, row, 1, scores, conf['name'], num_samples)  
-        row = row + 1
 
 def save_plots_to_file(plots_file, row, col, scores, conf_name, sample=""):
     # Create a new Excel workbook to save and compate DAGs
@@ -211,7 +135,7 @@ def save_plots_to_file(plots_file, row, col, scores, conf_name, sample=""):
         workbook = openpyxl.Workbook()
     sheet = workbook.active
 
-    for algo, score_data in scores.items():
+    for algo, score_data in scores[-1].items():
         dag = score_data["dag"]
         pos = graphviz_layout(dag, prog="dot")
         fig, ax = plt.subplots(1, 1, figsize=(3,2), dpi=150)
@@ -239,20 +163,123 @@ def save_plots_to_file(plots_file, row, col, scores, conf_name, sample=""):
     workbook.save(plots_file)
     workbook.close()
 
+def get_metric_mean_std_for_algo(scores, algo_name, metric):
+    data = []
+    for score_data in scores:
+        data.append(score_data[algo_name][metric])
+    mean = round(np.array(data).mean(), 2)
+    std = round(np.array(data).std(), 2)
+    return mean, std
+
+def write_scores_to_file(file_name, scores, conf_name, num_samples):
+    for algo_meta_data in models:
+        algo_name = algo_meta_data["name"]
+        line = f"{conf_name}, {num_samples}, {algo_name}"
+        for metric in ["aupr", "sid", "shd", "duration"]:
+            mean, std = get_metric_mean_std_for_algo(scores, algo_name, metric)
+            line = line + ", " + f"{mean}, {std}"
+
+        # errors = ";".join(score_data["errors"])
+        # line = line + ", " + errors
+        with open(file_name, "a") as f:
+                f.writelines(line + "\n")
+        
+def populate_algo_scores_and_dag(scores, algo_meta_data, orig_dag, data):
+    algo = algo_meta_data["model"]()
+    algo_name = algo_meta_data["name"]
+    try:
+        start = time.time()
+        prediction = algo.predict(data)
+        end = time.time()
+
+        aupr, _ = precision_recall(orig_dag, prediction)
+        sid_score = SID(orig_dag, prediction)
+        shd_score = SHD(orig_dag, prediction)
+        scores[algo_name]["aupr"] = round(aupr, 3)
+        scores[algo_name]["sid"] = int(sid_score)
+        scores[algo_name]["shd"] = shd_score
+        scores[algo_name]["duration"] = round(end - start, 2)
+        scores[algo_name]["dag"] = prediction
+    except Exception as e:
+        scores[algo_name]["aupr"] = 0
+        scores[algo_name]["sid"] = 0
+        scores[algo_name]["shd"] = 0
+        scores[algo_name]["duration"] = 0
+        scores[algo_name]["errors"] = f"Error: {e}"
+
+def execute_algos(scm, scores, data, conf_name):
+    for algo_meta_data in models:
+        pid = uuid.uuid4()
+        context = f"{algo_meta_data['name']}_{len(data)}_{conf_name} : {pid}"
+        log_progress(f"Strating {context}")
+        populate_algo_scores_and_dag(scores, algo_meta_data, scm.dag, data)
+        log_progress(f"Completed {context}")
+
+def init_scores_dict():
+    scores = {}
+    for m in models:
+        scores[m["name"]] = {"aupr":None, "sid":None, "shd":None, 
+                             "duration":None, "errors":None, "dag":None}
+    return scores
+
 def get_scm(config):
     input_nodes = config["nodes"]
     dSCM = eval(config["dSCM"])
     scm = dSCM.create(input_nodes)
     return scm
 
+def get_algo_scores_for_each_sample_size(conf, num_samples):
+    scm = get_scm(conf)
+    scores = init_scores_dict()
+    try:
+        data = scm.sample(num_samples)
+    except Exception as e:
+        raise GenerateSampleException(e)
+    
+    execute_algos(scm, scores, data, conf["name"])
+    return scores
+
+def get_timeout_value(conf, num_samples):
+    timeout = 1000
+    if isinstance(conf["nodes"], list):
+        num_nodes = sum(conf["nodes"])
+    else:
+        num_nodes = conf["nodes"]
+    
+    timeout = int(math.exp(int(math.log(num_nodes)) + int(math.log(math.sqrt(num_samples)))))
+    return timeout
+
+def execute_config_for_various_sample_sizes_in_parallel(conf):
+    global row
+    num_processes = max(1, min(num_iterations ,multiprocessing.cpu_count() - 1))
+    for num_samples in sample_sizes:
+        timeout = get_timeout_value(conf, num_samples)
+        pool = multiprocessing.Pool(processes=num_processes)
+        arguments = [(conf, num_samples) for _ in range(1, num_iterations + 1)]
+        try:
+            results = [pool.apply_async(get_algo_scores_for_each_sample_size, args=args) 
+                       for args in arguments]
+            scores = [result.get(timeout=timeout) for result in results]
+            write_scores_to_file(scores_file, scores, conf['name'], num_samples)
+            save_plots_to_file(plots_file, row, 1, scores, conf['name'], num_samples)  
+            row = row + 1
+        except GenerateSampleException as e:
+            msg = f"EXCEPTION in {conf['name']}_{num_samples}\n{e}"
+            log_progress(msg)
+        except multiprocessing.TimeoutError as e:
+            num_nodes = sum(conf["nodes"]) if isinstance(conf["nodes"], list) else conf["nodes"]
+            msg = f"TIMEOUT after {timeout} secs in {conf['name']}_{num_samples} \
+for {num_nodes} nodes in the configuration\n{e}"
+            log_progress(msg)
+
 def init_scores_file(file_name):
     with open(file_name, "w+") as f:
-        f.writelines(f"Sample, Config, Algo, AUPR, , SID, , SHD, , Duration, , Errors\n")
+        f.writelines(f"Config, Sample, Algo, AUPR, , SID, , SHD, , Duration, , Errors\n")
         f.writelines(f", , , mean, std, mean, std, mean, std, mean, std, \n")
 
 if __name__ == "__main__":
     init_scores_file(scores_file)
     for conf in configs:
         scm = get_scm(conf)
-        save_plots_to_file(plots_file, row, 0, {"Original":{"dag": scm.dag}}, conf['name'])
-        execute_config_for_various_sample_sizes(conf, scm)
+        save_plots_to_file(plots_file, row, 0, [{"Original":{"dag": scm.dag}}], conf['name'])
+        execute_config_for_various_sample_sizes_in_parallel(conf)
