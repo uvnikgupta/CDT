@@ -106,7 +106,7 @@ models = [
 plots_file = "logs/cdt_algo_plots.xlsx"
 log_file ='logs/cdt_algo_eval.log'
 sample_sizes = [100, 1000, 10000, 20000, 50000, 100000]
-num_iterations = 1
+num_iterations = 5
 total_steps = len(configs) * len(models) * len(sample_sizes) * num_iterations
 step = 0
 row = 1
@@ -218,8 +218,8 @@ def train_algos_for_each_sample_size(scm, num_samples, conf):
             results = [result.get(timeout=timeout) for result in results]
             algo_dags_and_runtimes[iter] = results
         except multiprocessing.TimeoutError:
-            log_progress(f"Timeout after {timeout} secs in {iter} for \
-{conf['name']} using {num_samples}")
+            log_progress(f"**TIMEOUT after {timeout} secs in \
+iteration {iter} for {conf['name']} using {num_samples}")
 
     return algo_dags_and_runtimes
 
