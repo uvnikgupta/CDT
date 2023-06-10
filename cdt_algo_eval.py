@@ -107,8 +107,6 @@ plots_file = "logs/cdt_algo_plots.xlsx"
 log_file ='logs/cdt_algo_eval.log'
 sample_sizes = [100, 1000, 10000, 20000, 50000, 100000]
 num_iterations = 5
-total_steps = len(configs) * len(models) * len(sample_sizes) * num_iterations
-step = 0
 row = 1
    
 def log_progress(message):
