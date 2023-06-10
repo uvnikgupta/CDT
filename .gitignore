@@ -8,4 +8,7 @@ Untitled.*
 *.log
 *.csv
 *.png
+*.pkl
+*.pickle
+*.dag
 test.*

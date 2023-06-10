@@ -73,7 +73,7 @@ class DynamicSCM():
             with open(self.__distributions_file, 'r') as file:
                 distributions = yaml.safe_load(file)
         except Exception as e:
-            print(f"WARNING: Error while parsing {self.__distributions_file}: {e}")
+            print(f"WARNING: Could not parse {self.__distributions_file}: {e}")
             print("**Loading default set of distributions.**")
             distributions = self.__get_default_distributions()
         
@@ -200,6 +200,7 @@ class DynamicSCM():
             scm_dists.extend(levels_and_distributions[n][0])
 
         self.__data = levels_and_distributions
+        self.__scm_dists = scm_dists
         scm = SCM(scm_dists)
         return scm
 
@@ -254,6 +255,8 @@ class DynamicSCM():
     def get_data(self):
         return copy.deepcopy(self.__data)
 
+    def get_scm_dists(self):
+        return copy.deepcopy(self.__scm_dists)
 
 if __name__ == "__main__":
     input_nodes = [6, 4, 6, 2, 2, 1]
