@@ -2,6 +2,7 @@
 __pycache__/
 .vscode/
 logs/
+temp/
 *.gml
 *.txt
 Untitled.*
