@@ -3,67 +3,79 @@
         "name" : "config_11",
         "type" : 1,
         "nodes": [10,5,2],
-        "dSCM" : "DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], distribution_type=1, simple_operations={'+': 1})"
+        "dSCM" : "DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], distribution_type=1, simple_operations={'+': 1})",
+        "force_data_generation" : false
     },
     {
         "name" : "config_21",
         "type" : 2,
         "nodes": [10,5,2],
-        "dSCM" : "DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], distribution_type=2, simple_operations={'+': 1})"
+        "dSCM" : "DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], distribution_type=2, simple_operations={'+': 1})",
+        "force_data_generation" : false
     },
     {
         "name" : "config_31",
         "nodes": [10,5,2],
-        "dSCM" : "DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], simple_operations={'+': 1})"
+        "dSCM" : "DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], simple_operations={'+': 1})",
+        "force_data_generation" : false
     },
     {
         "name" : "config_12",
         "type" : 1,
         "nodes": [2,2,2,2,2,1],
-        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], distribution_type=1, simple_operations={'+': 1})"
+        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], distribution_type=1, simple_operations={'+': 1})",
+        "force_data_generation" : false
     },
     {
         "name" : "config_22",
         "nodes": [2,2,2,2,2,1],
         "type" : 2,
-        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], distribution_type=2, simple_operations={'+': 1})"
+        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], distribution_type=2, simple_operations={'+': 1})",
+        "force_data_generation" : false
     },
     {
         "name" : "config_32",
         "nodes": [2,2,2,2,2,1],
-        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], simple_operations={'+': 1})"
+        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], simple_operations={'+': 1})",
+        "force_data_generation" : false
     },
     {
         "name" : "config_23",
         "type" : 2,
         "nodes": [2,2,2,2,2,1],
-        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[0.4,0.1,0.5], distribution_type=2)"
+        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[0.4,0.1,0.5], distribution_type=2)",
+        "force_data_generation" : false
     },
     {
         "name" : "config_33",
         "nodes": [2,2,2,2,2,1],
-        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[0.4,0.1,0.5])"
+        "dSCM" : "DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[0.4,0.1,0.5])",
+        "force_data_generation" : false
     },
     {
         "name" : "config_13",
         "type" : 1,
         "nodes": 40,
-        "dSCM" : "DynamicSCM(distribution_type=1)"
+        "dSCM" : "DynamicSCM(distribution_type=1)",
+        "force_data_generation" : false
     },
     {
         "name" : "config_24",
         "type" : 2,
         "nodes": 40,
-        "dSCM" : "DynamicSCM(distribution_type=2)"
+        "dSCM" : "DynamicSCM(distribution_type=2)",
+        "force_data_generation" : false
     },
     {
         "name" : "config_34",
         "nodes": 40,
-        "dSCM" : "DynamicSCM()"
+        "dSCM" : "DynamicSCM()",
+        "force_data_generation" : false
     },
     {
         "name" : "config_35",
         "nodes": [150, 50, 10, 3],
-        "dSCM" : "DynamicSCM(max_parents=20, complex_operations={})"
+        "dSCM" : "DynamicSCM(max_parents=20, complex_operations={})",
+        "force_data_generation" : false
     }
 ]

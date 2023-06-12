@@ -1,6 +1,6 @@
 import multiprocessing
 from functools import partial
-import uuid, math, time, datetime, pickle, os, shutil, json
+import uuid, math, time, datetime, pickle, os, shutil, json, glob
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -18,85 +18,6 @@ from scm.dynamic_scm import DynamicSCM
 from scmodels import SCM
 
 plt.switch_backend('agg')
-
-# DAG configurations
-configs = [
-    # {
-    #     "name" : "config_11",
-    #     "type" : 1,
-    #     "nodes": [10,5,2],
-    #     "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
-    #         distribution_type=1, simple_operations={"+": 1})'
-    # },
-    # {
-    #     "name" : "config_21",
-    #     "type" : 2,
-    #     "nodes": [10,5,2],
-    #     "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
-    #         distribution_type=2, simple_operations={"+": 1})'
-    # },
-    # {
-    #     "name" : "config_31",
-    #     "nodes": [10,5,2],
-    #     "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
-    #         simple_operations={"+": 1})'
-    # },
-    # {
-    #     "name" : "config_12",
-    #     "type" : 1,
-    #     "nodes": [2,2,2,2,2,1],
-    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
-    #         distribution_type=1, simple_operations={"+": 1})'
-    # },
-    # {
-    #     "name" : "config_22",
-    #     "nodes": [2,2,2,2,2,1],
-    #     "type" : 2,
-    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
-    #         distribution_type=2, simple_operations={"+": 1})'
-    # },
-    # {
-    #     "name" : "config_32",
-    #     "nodes": [2,2,2,2,2,1],
-    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
-    #         simple_operations={"+": 1})'
-    # },
-    # {
-    #     "name" : "config_23",
-    #     "type" : 2,
-    #     "nodes": [2,2,2,2,2,1],
-    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, \
-    #         parent_levels_probs=[0.4,0.1,0.5], distribution_type=2)'
-    # },
-    # {
-    #     "name" : "config_33",
-    #     "nodes": [2,2,2,2,2,1],
-    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, \
-    #         parent_levels_probs=[0.4,0.1,0.5])'
-    # },
-    {
-        "name" : "config_13",
-        "type" : 1,
-        "nodes": 40,
-        "dSCM" : 'DynamicSCM(distribution_type=1)'
-    },
-    {
-        "name" : "config_24",
-        "type" : 2,
-        "nodes": 40,
-        "dSCM" : 'DynamicSCM(distribution_type=2)'
-    },
-    {
-        "name" : "config_34",
-        "nodes": 40,
-        "dSCM" : 'DynamicSCM()'
-    },
-    {
-        "name" : "config_35",
-        "nodes": [150, 50, 10, 3],
-        "dSCM" : 'DynamicSCM(max_parents=20, complex_operations={})'
-    }
-]
 
 # CDT algorithms
 models = [
@@ -162,10 +83,11 @@ models = [
 ]
 
 # Global variables
-plots_file = "logs/cdt_algo_plots.xlsx"
+plots_file = "logs/plots_cdt_algo.xlsx"
 plots_sheet_name = "plots"
 config_sheet_name = "configs"
 log_file ='logs/cdt_algo_eval.log'
+data_folder = "data_cdt_algo_eval"
 config_file = "configs_for_cdt_algo_eval.json"
 metrics = {
     "aupr":'round(precision_recall(orig_dag, algo_dag)[0], 2)', 
@@ -197,6 +119,18 @@ def update_scores(scores, results):
         for metric in metrics:
             scores[algo_name][metric].append(result[2][metric])
 
+def train_non_parallable_algos(algos, data_file, conf, orig_scm_dists, results):
+    # Then train the algos that cannot be run in parallel. These are 
+    # the NN based algos that spawn their own process hence cannot be 
+    # run from within an already spawned process
+    results = []
+    for algo_meta_data in algos:
+        if not algo_meta_data["parallel"]:
+            result = train_algo(algo_meta_data, data_file, conf["name"], 
+                                orig_scm_dists)
+            results.append(result)
+    return results
+
 def get_algo_metrics(algo_name, orig_dag, algo_dag, start):
     retval ={}
     if algo_dag is not None:
@@ -219,11 +153,11 @@ def scale_data(data):
     data = pd.DataFrame(data=data, columns=columns)
     return data
 
-def train_algo(algo_meta_data, data_file, conf_name, orig_scm_dists, iter):
+def train_algo(algo_meta_data, data_file, conf_name, orig_scm_dists):
     uid = uuid.uuid4()
     scm = SCM(orig_scm_dists)
     algo_name = algo_meta_data["name"]
-
+    
     with open(data_file, "rb") as file:
         data = pickle.load(file)
 
@@ -244,12 +178,20 @@ def train_algo(algo_meta_data, data_file, conf_name, orig_scm_dists, iter):
         metrics = get_algo_metrics(algo_name, None, None, 0)
         log_progress(f"EXCEPTION in training {context}\n{e}")
 
-    dag_file_name = f"temp/{algo_meta_data['name']}_{iter}.dag"
+    dag_file_name = f"temp/{algo_meta_data['name']}.dag"
     with open(dag_file_name, "wb") as file:
         pickle.dump(algo_dag, file)
 
     return ((algo_meta_data['name'], dag_file_name, metrics))
     
+def get_training_args_list(algos, data_file, conf, orig_scm_dists):
+    # Create the argument list for training algos in parallel
+    args_list = []
+    for algo_meta_data in algos:
+        if algo_meta_data["parallel"] == True:
+            args_list.append((algo_meta_data, data_file, conf["name"], orig_scm_dists))
+    return args_list
+
 def get_timeout_value(conf, num_samples):
     if isinstance(conf["nodes"], list):
         num_nodes = sum(conf["nodes"])
@@ -270,7 +212,7 @@ def init_scores(models):
             scores[algo_name][metric] = []
     return scores
 
-def train_algos_for_sample_size(algos, data_file_names, num_samples, 
+def train_algos_for_sample_size(algos, data_folder, num_samples, 
                                 conf, orig_scm_dists):
     scores = init_scores(algos)
     num_processes = max(1, min(len(algos), multiprocessing.cpu_count() - 1))
@@ -279,24 +221,16 @@ def train_algos_for_sample_size(algos, data_file_names, num_samples,
     for iter in range(num_iterations):
         log_progress(f"\n**** Starting training iteration {iter} for \
 {num_samples} samples ****")
-        data_file = data_file_names[iter]
-        args_list = [(algo_meta_data, data_file, conf["name"], orig_scm_dists, iter) 
-                     for algo_meta_data in algos if algo_meta_data["parallel"] == True]
+        data_file = f"{data_folder}/{conf['name']}_{num_samples}_{iter}.data"
+        args_list = get_training_args_list(algos, data_file, conf, orig_scm_dists)
         try:
+            # First Train algos in parallel with timeout
             pool = multiprocessing.Pool(processes=num_processes)
             results = [pool.apply_async(train_algo, args=args) 
                         for args in args_list]
             results = [result.get(timeout=timeout) for result in results]
-
-            # Train the algos that cannot be run in parallel. These are the 
-            # NN based algos that spawn their own process hence cannot be run
-            # from within an already spawned process
-            for algo_meta_data in algos:
-                if not algo_meta_data["parallel"]:
-                    result = train_algo(algo_meta_data, data_file, 
-                                        conf["name"], orig_scm_dists, iter)
-                    results.append(result)
-
+            results.append(train_non_parallable_algos(algos, data_file, conf, 
+                                                      orig_scm_dists, results))
             update_scores(scores, results)
         except multiprocessing.TimeoutError:
             log_progress(f"**TIMEOUT after {timeout} secs in \
@@ -305,31 +239,6 @@ iteration {iter} for {conf['name']} using {num_samples}")
         log_progress(f"\n==== Completed training iteration {iter} for \
 {num_samples} samples ====")
     return scores
-
-def generate_data(num_samples, scm_dists, conf_name, iter):
-    scm = SCM(scm_dists)
-    trials = 10
-    while trials:
-        msg = f"{num_samples} samples for {conf_name}"
-        try:
-            log_msg = f"Iter {iter}: Starting data generation of {msg}"
-            log_progress(log_msg)
-            data = scm.sample(num_samples)
-            # data = scale_data(data)
-
-            file_name = f"temp/data_{iter}.pkl"
-            with open(file_name, "wb") as file:
-                pickle.dump(data, file)
-
-            log_msg = f"Iter {iter}: Completed data generation of {msg}"
-            log_progress(log_msg)
-            break
-        except Exception as e:
-            log_msg = f"Iter {iter}: EXCEPTION in data generation. Trying again {msg}"
-            log_progress(log_msg)
-            trials -= 1
-            continue
-    return file_name
 
 def get_algos_for_training(conf):
     algos = []
@@ -345,27 +254,15 @@ def get_algos_for_training(conf):
             algos.append(algo_meta_data)
     return algos
 
-def populate_cdt_algos_scores_for_config(scm_dists, conf):
+def populate_cdt_algos_scores_for_config(scm_dists, conf, data_folder):
     global row
     algos = get_algos_for_training(conf)
 
-    iters = [(i,) for i in range(num_iterations)]
-    num_processes = max(1, min(num_iterations, multiprocessing.cpu_count() - 1))
-
     # Run algo training for various sample sizes for the config
     for num_samples in sample_sizes:
-        # Run parallel data generation for all iterations of algo training
-        # Cannot generate the data while training the algos in parallel as
-        # each algorithm will then have a different set of data!
-        partial_worker = partial(generate_data, num_samples, scm_dists, conf["name"])
-        pool = multiprocessing.Pool(processes=num_processes)
-        file_names = pool.starmap(partial_worker, iters)
-        pool.close()
-        pool.join()
-
         # Train CDT algos and get their DAGs and run durations
-        scores = train_algos_for_sample_size(algos, file_names, 
-                                             num_samples, conf, scm_dists)
+        scores = train_algos_for_sample_size(algos, data_folder, num_samples, 
+                                             conf, scm_dists)
         consolidate_scores(scores)
         save_plots_and_scores(plots_file, 1, scores, conf, num_samples)  
         row = row + 1
@@ -486,18 +383,97 @@ def save_plots_and_scores(plots_file, col, scores, conf, num_samples=""):
     workbook.close()
     log_progress("Saving DAGs - Done")
 
+def generate_data_for_config(num_samples, iter, dists_file_path):
+    folder = dists_file_path.split("/")[0]
+    conf_name = dists_file_path.split("/")[1].split(".")[0]
+    data_file = f"{folder}/{conf_name}_{num_samples}_{iter}.data"
+    
+    if os.path.exists(data_file):
+        log_progress(f"{data_file} already exists.")
+        return data_file
+    
+    with open(dists_file_path, "rb") as file:
+        scm_dists = pickle.load(file)
+    scm = SCM(scm_dists)
+    trials = 10
+    while trials:
+        msg = f"{num_samples} samples for {conf_name}"
+        try:
+            log_msg = f"Iter {iter}: Starting data generation of {msg}"
+            log_progress(log_msg)
+            data = scm.sample(num_samples)
+
+            with open(data_file, "wb") as file:
+                pickle.dump(data, file)
+
+            log_msg = f"Iter {iter}: Completed data generation of {msg}"
+            log_progress(log_msg)
+            break
+        except Exception as e:
+            log_msg = f"Iter {iter}: EXCEPTION in data generation. Trying again {msg}"
+            log_progress(log_msg)
+            trials -= 1
+            continue
+    return data_file
+ 
 def get_scm(config):
     input_nodes = config["nodes"]
     dSCM = eval(config["dSCM"])
     scm = dSCM.create(input_nodes)
     return scm, dSCM.get_scm_dists()
 
+def check_and_handle_dists_creation(dists_file, conf, data_folder):
+    create = False
+    force = conf["force_data_generation"]
+    if not force:
+        if os.path.exists(dists_file):
+            log_progress(f"{dists_file} already exists. \
+To generate new distribution set 'force_data_generation' to true")
+            return create
+
+    pattern = f"{conf['name']}_*.data"
+    data_files = glob.glob(os.path.join(data_folder, pattern))
+    for file in data_files:
+        os.remove(file)
+    create = True
+    return create
+
 def get_algo_eval_configs(config_file):
     with open(config_file,"r") as file:
         configs = json.load(file)
     return configs
     
+def def_generate_and_save_scm_dists(config_file, data_folder):
+    dists_file_paths = []
+    for conf in get_algo_eval_configs(config_file):
+        dists_file = f"{data_folder}/{conf['name']}.dists"
+        dists_file_paths.append(dists_file)
+
+        create = check_and_handle_dists_creation(dists_file, conf, data_folder)
+        if create:
+            _, scm_dists = get_scm(conf)
+            with open(dists_file, "wb") as file:
+                pickle.dump(scm_dists, file)   
+    return dists_file_paths
+
+def generate_all_data(data_folder, config_file):
+    folder = data_folder
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+    dists_file_paths = def_generate_and_save_scm_dists(config_file, data_folder)
+    dists_file_paths = [(dist_file,) for dist_file in dists_file_paths]
+    num_processes = max(1, min(len(dists_file_paths), multiprocessing.cpu_count() - 1))
+    for num_samples in sample_sizes:
+        for iter in range(num_iterations):
+            partial_worker = partial(generate_data_for_config, num_samples, iter)
+            pool = multiprocessing.Pool(processes=num_processes)
+            results = pool.starmap(partial_worker, dists_file_paths)
+            results = [result for result in results]
+    return dists_file_paths
+
 if __name__ == "__main__":
+    force = False
     temp_folder = "temp"
     if not os.path.exists(temp_folder):
         os.makedirs(temp_folder)
@@ -507,10 +483,14 @@ if __name__ == "__main__":
         if os.path.isfile(file_path):
             os.remove(file_path)
 
+    dists_file_paths = generate_all_data(data_folder, config_file)
     for conf in get_algo_eval_configs(config_file):
-        scm, scm_dists = get_scm(conf)
+        dists_file = f"{data_folder}/{conf['name']}.dists"
+        with open(dists_file, "rb") as file:
+            scm_dists = pickle.load(file)
+        scm = SCM(scm_dists)
         save_plots_and_scores(plots_file, 0, 
                            {"Original":{"dag": scm.dag}}, 
                            conf)
         
-        populate_cdt_algos_scores_for_config(scm_dists, conf)
+        populate_cdt_algos_scores_for_config(scm_dists, conf, data_folder)
