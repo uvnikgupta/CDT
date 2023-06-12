@@ -16,7 +16,9 @@ from cdt.causality.graph import (GS, GIES, PC, SAM, IAMB, Inter_IAMB,
 from cdt.metrics import precision_recall, SID, SHD
 from scm.dynamic_scm import DynamicSCM
 from scmodels import SCM
-    
+
+plt.switch_backend('agg')
+
 # DAG configurations
 configs = [
     {
@@ -91,27 +93,25 @@ configs = [
 ]
 
 # CDT algorithms
-models_cont = [
+models = [
     {
         "name" : "GIES",
         "model" : "GIES(score='obs')",
-        "parallel" : True
-    }
-]
-
-models_disc = [
+        "parallel" : True,
+        "type" : 1
+    },
     {
         "name" : "GIES",
         "model" : "GIES(score='int')",
-        "parallel" : True
+        "parallel" : True,
+        "type" : 2
     },
     {
         "name" : "LiNGAM",
         "model" : "LiNGAM()",
-        "parallel" : True
-    }]
-
-models_common = [
+        "parallel" : True,
+        "type" : 2
+    },    
     {
         "name" : "PC",
         "model" : "PC()",
@@ -261,12 +261,10 @@ def init_scores(models):
             scores[algo_name][metric] = []
     return scores
 
-def train_algos_for_sample_size(data_file_names, num_samples, conf, orig_scm_dists):
-    models = models_disc if conf["type"] == 2 else models_cont
-    models.extend(models_common)
-    
-    scores = init_scores(models)
-    num_processes = max(1, min(len(models), multiprocessing.cpu_count() - 1))
+def train_algos_for_sample_size(algos, data_file_names, num_samples, 
+                                conf, orig_scm_dists):
+    scores = init_scores(algos)
+    num_processes = max(1, min(len(algos), multiprocessing.cpu_count() - 1))
     timeout = get_timeout_value(conf, num_samples)
 
     for iter in range(num_iterations):
@@ -274,7 +272,7 @@ def train_algos_for_sample_size(data_file_names, num_samples, conf, orig_scm_dis
 {num_samples} samples ****")
         data_file = data_file_names[iter]
         args_list = [(algo_meta_data, data_file, conf["name"], orig_scm_dists, iter) 
-                     for algo_meta_data in models if algo_meta_data["parallel"] == True]
+                     for algo_meta_data in algos if algo_meta_data["parallel"] == True]
         try:
             pool = multiprocessing.Pool(processes=num_processes)
             results = [pool.apply_async(train_algo, args=args) 
@@ -284,7 +282,7 @@ def train_algos_for_sample_size(data_file_names, num_samples, conf, orig_scm_dis
             # Train the algos that cannot be run in parallel. These are the 
             # NN based algos that spawn their own process hence cannot be run
             # from within an already spawned process
-            for algo_meta_data in models:
+            for algo_meta_data in algos:
                 if not algo_meta_data["parallel"]:
                     result = train_algo(algo_meta_data, data_file, 
                                         conf["name"], orig_scm_dists, iter)
@@ -324,8 +322,24 @@ def generate_data(num_samples, scm_dists, conf_name, iter):
             continue
     return file_name
 
+def get_algos_for_training(conf):
+    algos = []
+    for algo_meta_data in models:
+        if "type" in algo_meta_data:
+            if "type" in conf and algo_meta_data["type"] == conf["type"]:
+                # add type specifc algos
+                algos.append(algo_meta_data)
+            elif "type" not in conf and algo_meta_data["type"] == 1:
+                # if conf is of mixed type add continuous alogs
+                algos.append(algo_meta_data)
+        else: # add common algos
+            algos.append(algo_meta_data)
+    return algos
+
 def populate_cdt_algos_scores_for_config(scm_dists, conf):
     global row
+    algos = get_algos_for_training(conf)
+
     iters = [(i,) for i in range(num_iterations)]
     num_processes = max(1, min(num_iterations, multiprocessing.cpu_count() - 1))
 
@@ -341,9 +355,10 @@ def populate_cdt_algos_scores_for_config(scm_dists, conf):
         pool.join()
 
         # Train CDT algos and get their DAGs and run durations
-        scores = train_algos_for_sample_size(file_names, num_samples, conf, scm_dists)
+        scores = train_algos_for_sample_size(algos, file_names, 
+                                             num_samples, conf, scm_dists)
         consolidate_scores(scores)
-        save_plots_to_file(plots_file, row, 1, scores, conf['name'], num_samples)  
+        save_plots_to_file(plots_file, 1, scores, conf['name'], num_samples)  
         row = row + 1
         
 def get_score_text(score_data):
@@ -353,20 +368,37 @@ def get_score_text(score_data):
             text += f"{metric}:{values}\n"
     return text
 
-def check_file_size_and_move_it(plots_file, prefix):
-    file_size = os.path.getsize(plots_file)  # Get the file size in bytes
-    max_size_bytes = 10 * 1024 * 1024  # Convert max_size from MB to bytes
+def get_node_colors(dag):
+    nodes = dag.nodes()
+    colors = ['#F9E79F','#A3E4D7','#A9CCE3','#D7BDE2','#EBDEF0',
+              '#DAF7A6','#EDBB99','#3498DB','#EC7063','#E5E8E8',]
+    node_colors = []
+    prev_level = ""
+    index = -1
+    for node in nodes:
+        cur_level = node[0]
+        if cur_level != prev_level:
+            prev_level = cur_level
+            index += 1
+        if index > len(colors) - 1:
+            index = 0
+        node_colors.append(colors[index])
+    return node_colors
 
-    if file_size > max_size_bytes:
+def check_num_rows_in_xl_and_move_it(plots_file):
+    global row
+    if row > 10:
+        prefix = datetime.datetime.now().strftime("%d%H%M%S")
         new_file_path = f"{os.path.splitext(plots_file)[0]}_{prefix}.xlsx"
         shutil.move(plots_file, new_file_path)
+        row = 1
         log_progress(f"The file '{plots_file}' has been renamed to '{new_file_path}' \
 due to exceeding the maximum size.")
 
-def save_plots_to_file(plots_file, row, col, scores, conf_name, num_samples=""):
+def save_plots_to_file(plots_file, col, scores, conf_name, num_samples=""):
     log_progress("Saving DAGs - Start")
-    if os.path.exists(plots_file) and col == 0:
-        check_file_size_and_move_it(plots_file, row)
+    if os.path.exists(plots_file):
+        check_num_rows_in_xl_and_move_it(plots_file)
 
     try:
         workbook = openpyxl.load_workbook(plots_file)
@@ -375,13 +407,22 @@ def save_plots_to_file(plots_file, row, col, scores, conf_name, num_samples=""):
     sheet = workbook.active
 
     for algo, score_data in scores.items():
+        # Since all the DAGs have the same number of nodes with the 
+        # same names, node colors will of any one DAG will be applicable
+        # for all DAGs. Since the only way to access an item in a python 
+        # dict is via the key, hence this sing loop for loop
+        node_colors = get_node_colors(score_data["dag"])
+        break
+
+    for algo, score_data in scores.items():
         dag = score_data["dag"]
         fig, ax = plt.subplots(1, 1, figsize=(3,2), dpi=150)
         ax.set_title(f"{conf_name}_{algo}_{num_samples}")
 
         if isinstance(dag, nx.classes.digraph.DiGraph):
             pos = graphviz_layout(dag, prog="dot")
-            nx.draw(dag, pos=pos, ax=ax, with_labels=True, node_size=250, alpha=0.5)
+            nx.draw(dag, pos=pos, ax=ax, with_labels=True, node_size=150, 
+                    node_color=node_colors, font_size=7, alpha=0.5)
             text = get_score_text(score_data)
             fig.text(0.65, 0.05, text, fontsize=10, color='black')
         else:
@@ -428,7 +469,7 @@ if __name__ == "__main__":
 
     for conf in configs:
         scm, scm_dists = get_scm(conf)
-        save_plots_to_file(plots_file, row, 0, 
+        save_plots_to_file(plots_file, 0, 
                            {"Original":{"dag": scm.dag}}, conf["name"])
         
         populate_cdt_algos_scores_for_config(scm_dists, conf)
