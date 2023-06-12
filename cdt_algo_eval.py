@@ -1,6 +1,6 @@
 import multiprocessing
 from functools import partial
-import uuid, math, time, datetime, pickle, os, shutil
+import uuid, math, time, datetime, pickle, os, shutil, json
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -21,64 +21,70 @@ plt.switch_backend('agg')
 
 # DAG configurations
 configs = [
-    {
-        "name" : "config_11",
-        "type" : 1,
-        "nodes": [10,5,2],
-        "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
-            distribution_type=1, simple_operations={"+": 1})'
-    },
-    {
-        "name" : "config_21",
-        "type" : 2,
-        "nodes": [10,5,2],
-        "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
-            distribution_type=2, simple_operations={"+": 1})'
-    },
-    {
-        "name" : "config_31",
-        "nodes": [10,5,2],
-        "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
-            simple_operations={"+": 1})'
-    },
-    {
-        "name" : "config_12",
-        "type" : 1,
-        "nodes": [2,2,2,2,2,1],
-        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
-            distribution_type=1, simple_operations={"+": 1})'
-    },
-    {
-        "name" : "config_22",
-        "nodes": [2,2,2,2,2,1],
-        "type" : 2,
-        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
-            distribution_type=2, simple_operations={"+": 1})'
-    },
-    {
-        "name" : "config_32",
-        "nodes": [2,2,2,2,2,1],
-        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
-            simple_operations={"+": 1})'
-    },
-    {
-        "name" : "config_23",
-        "type" : 2,
-        "nodes": [2,2,2,2,2,1],
-        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, \
-            parent_levels_probs=[0.4,0.1,0.5], distribution_type=2)'
-    },
-    {
-        "name" : "config_33",
-        "nodes": [2,2,2,2,2,1],
-        "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, \
-            parent_levels_probs=[0.4,0.1,0.5])'
-    },
+    # {
+    #     "name" : "config_11",
+    #     "type" : 1,
+    #     "nodes": [10,5,2],
+    #     "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
+    #         distribution_type=1, simple_operations={"+": 1})'
+    # },
+    # {
+    #     "name" : "config_21",
+    #     "type" : 2,
+    #     "nodes": [10,5,2],
+    #     "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
+    #         distribution_type=2, simple_operations={"+": 1})'
+    # },
+    # {
+    #     "name" : "config_31",
+    #     "nodes": [10,5,2],
+    #     "dSCM" : 'DynamicSCM(min_parents=2, parent_levels_probs=[0.9, 0.3], \
+    #         simple_operations={"+": 1})'
+    # },
+    # {
+    #     "name" : "config_12",
+    #     "type" : 1,
+    #     "nodes": [2,2,2,2,2,1],
+    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
+    #         distribution_type=1, simple_operations={"+": 1})'
+    # },
+    # {
+    #     "name" : "config_22",
+    #     "nodes": [2,2,2,2,2,1],
+    #     "type" : 2,
+    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
+    #         distribution_type=2, simple_operations={"+": 1})'
+    # },
+    # {
+    #     "name" : "config_32",
+    #     "nodes": [2,2,2,2,2,1],
+    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, parent_levels_probs=[1], \
+    #         simple_operations={"+": 1})'
+    # },
+    # {
+    #     "name" : "config_23",
+    #     "type" : 2,
+    #     "nodes": [2,2,2,2,2,1],
+    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, \
+    #         parent_levels_probs=[0.4,0.1,0.5], distribution_type=2)'
+    # },
+    # {
+    #     "name" : "config_33",
+    #     "nodes": [2,2,2,2,2,1],
+    #     "dSCM" : 'DynamicSCM(min_parents=2, max_parents=2, \
+    #         parent_levels_probs=[0.4,0.1,0.5])'
+    # },
     {
         "name" : "config_13",
         "type" : 1,
         "nodes": 40,
         "dSCM" : 'DynamicSCM(distribution_type=1)'
+    },
+    {
+        "name" : "config_24",
+        "type" : 2,
+        "nodes": 40,
+        "dSCM" : 'DynamicSCM(distribution_type=2)'
     },
     {
         "name" : "config_34",
@@ -157,7 +163,10 @@ models = [
 
 # Global variables
 plots_file = "logs/cdt_algo_plots.xlsx"
+plots_sheet_name = "plots"
+config_sheet_name = "configs"
 log_file ='logs/cdt_algo_eval.log'
+config_file = "configs_for_cdt_algo_eval.json"
 metrics = {
     "aupr":'round(precision_recall(orig_dag, algo_dag)[0], 2)', 
     "sid":'int(SID(orig_dag, algo_dag))',
@@ -247,7 +256,7 @@ def get_timeout_value(conf, num_samples):
     else:
         num_nodes = conf["nodes"]
     
-    timeout = int(math.exp(int(math.log(num_nodes)) + 
+    timeout = int(math.exp(int(math.log(num_nodes * 2)) + 
                            int(math.log(math.sqrt((num_samples))))))
     return timeout
 
@@ -358,9 +367,16 @@ def populate_cdt_algos_scores_for_config(scm_dists, conf):
         scores = train_algos_for_sample_size(algos, file_names, 
                                              num_samples, conf, scm_dists)
         consolidate_scores(scores)
-        save_plots_to_file(plots_file, 1, scores, conf['name'], num_samples)  
+        save_plots_and_scores(plots_file, 1, scores, conf, num_samples)  
         row = row + 1
         
+def save_config_to_xl(configs_sheet, conf):
+    if configs_sheet.max_row == 1:
+        row = 1
+    else:
+        row = configs_sheet.max_row + 1
+    configs_sheet.cell(row=row, column=1, value=str(conf))    
+
 def get_score_text(score_data):
     text = ""
     for metric, values in score_data.items():
@@ -370,8 +386,8 @@ def get_score_text(score_data):
 
 def get_node_colors(dag):
     nodes = dag.nodes()
-    colors = ['#F9E79F','#A3E4D7','#A9CCE3','#D7BDE2','#EBDEF0',
-              '#DAF7A6','#EDBB99','#3498DB','#EC7063','#E5E8E8',]
+    colors = ['#F9E79F','#A3E4D7','#D7BDE2','#A9CCE3','#DAF7A6',
+              '#EBDEF0','#EDBB99','#3498DB','#EC7063','#E5E8E8',]
     node_colors = []
     prev_level = ""
     index = -1
@@ -385,27 +401,7 @@ def get_node_colors(dag):
         node_colors.append(colors[index])
     return node_colors
 
-def check_num_rows_in_xl_and_move_it(plots_file):
-    global row
-    if row > 10:
-        prefix = datetime.datetime.now().strftime("%d%H%M%S")
-        new_file_path = f"{os.path.splitext(plots_file)[0]}_{prefix}.xlsx"
-        shutil.move(plots_file, new_file_path)
-        row = 1
-        log_progress(f"The file '{plots_file}' has been renamed to '{new_file_path}' \
-due to exceeding the maximum size.")
-
-def save_plots_to_file(plots_file, col, scores, conf_name, num_samples=""):
-    log_progress("Saving DAGs - Start")
-    if os.path.exists(plots_file):
-        check_num_rows_in_xl_and_move_it(plots_file)
-
-    try:
-        workbook = openpyxl.load_workbook(plots_file)
-    except:
-        workbook = openpyxl.Workbook()
-    sheet = workbook.active
-
+def save_plots_and_scores_to_xl(plots_sheet, col, scores, conf, num_samples=""):
     for algo, score_data in scores.items():
         # Since all the DAGs have the same number of nodes with the 
         # same names, node colors will of any one DAG will be applicable
@@ -417,7 +413,7 @@ def save_plots_to_file(plots_file, col, scores, conf_name, num_samples=""):
     for algo, score_data in scores.items():
         dag = score_data["dag"]
         fig, ax = plt.subplots(1, 1, figsize=(3,2), dpi=150)
-        ax.set_title(f"{conf_name}_{algo}_{num_samples}")
+        ax.set_title(f"{conf['name']}_{algo}_{num_samples}")
 
         if isinstance(dag, nx.classes.digraph.DiGraph):
             pos = graphviz_layout(dag, prog="dot")
@@ -440,13 +436,52 @@ def save_plots_to_file(plots_file, col, scores, conf_name, num_samples=""):
 
         target_cell = chr(65 + col) + str(row)
         width, height = 35, 110
-        sheet.column_dimensions[target_cell[0]].width = width
-        sheet.row_dimensions[int(target_cell[1:])].height = height
+        plots_sheet.column_dimensions[target_cell[0]].width = width
+        plots_sheet.row_dimensions[int(target_cell[1:])].height = height
         image.width = width * 6.8
         image.height = height * 1.3
 
-        sheet.add_image(image, target_cell)
+        plots_sheet.add_image(image, target_cell)
+        pil_image.close()
+        os.remove('plot.png')
         col = col + 1
+
+def check_num_rows_in_xl_and_move_it(plots_file):
+    global row
+    if row > 10:
+        prefix = datetime.datetime.now().strftime("%d%H%M%S")
+        new_file_path = f"{os.path.splitext(plots_file)[0]}_{prefix}.xlsx"
+        shutil.move(plots_file, new_file_path)
+        row = 1
+        log_progress(f"The file '{plots_file}' has been renamed to '{new_file_path}' \
+due to exceeding the maximum size.")
+
+def get_xl_workbook_for_plots(plots_file):
+    workbook = None
+    if os.path.exists(plots_file):
+        check_num_rows_in_xl_and_move_it(plots_file)
+
+    try:
+        workbook = openpyxl.load_workbook(plots_file)
+    except:
+        workbook = openpyxl.Workbook()
+        plots_sheet = workbook.active
+        plots_sheet.title = plots_sheet_name
+        configs_sheet = workbook.create_sheet()
+        configs_sheet.title = config_sheet_name
+    return workbook
+
+def save_plots_and_scores(plots_file, col, scores, conf, num_samples=""):
+    log_progress("Saving DAGs - Start")
+    workbook = get_xl_workbook_for_plots(plots_file)
+    
+    plots_sheet = workbook[plots_sheet_name]
+    save_plots_and_scores_to_xl(plots_sheet, col, scores, conf, num_samples)
+
+    if col == 0:
+        configs_sheet = workbook[config_sheet_name]
+        save_config_to_xl(configs_sheet, conf)
+
     workbook.save(plots_file)
     workbook.close()
     log_progress("Saving DAGs - Done")
@@ -457,6 +492,11 @@ def get_scm(config):
     scm = dSCM.create(input_nodes)
     return scm, dSCM.get_scm_dists()
 
+def get_algo_eval_configs(config_file):
+    with open(config_file,"r") as file:
+        configs = json.load(file)
+    return configs
+    
 if __name__ == "__main__":
     temp_folder = "temp"
     if not os.path.exists(temp_folder):
@@ -467,9 +507,10 @@ if __name__ == "__main__":
         if os.path.isfile(file_path):
             os.remove(file_path)
 
-    for conf in configs:
+    for conf in get_algo_eval_configs(config_file):
         scm, scm_dists = get_scm(conf)
-        save_plots_to_file(plots_file, 0, 
-                           {"Original":{"dag": scm.dag}}, conf["name"])
+        save_plots_and_scores(plots_file, 0, 
+                           {"Original":{"dag": scm.dag}}, 
+                           conf)
         
         populate_cdt_algos_scores_for_config(scm_dists, conf)
