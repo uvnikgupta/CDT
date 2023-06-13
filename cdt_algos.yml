@@ -1,0 +1,37 @@
+- name: GIES
+  model: GIES(score='obs')
+  parallel: true
+  type: 1
+- name: GIES
+  model: GIES(score='int')
+  parallel: true
+  type: 2
+- name: LiNGAM
+  model: LiNGAM()
+  parallel: true
+  type: 2
+- name: PC
+  model: PC()
+  parallel: true
+- name: GS
+  model: GS()
+  parallel: true
+- name: IAMB
+  model: IAMB()
+  parallel: true
+- name: Fast_IAMB
+  model: Fast_IAMB()
+  parallel: true
+- name: Inter_IAMB
+  model: Inter_IAMB()
+  parallel: true
+- name: MMPC
+  model: MMPC()
+  parallel: true
+# - name: CCDr
+#   model: CCDr()
+#   parallel: true
+# - name: SAM
+#   model: SAM()
+#   parallel: false
+#   scale_data: true

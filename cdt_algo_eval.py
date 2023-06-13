@@ -1,6 +1,6 @@
 import multiprocessing
 from functools import partial
-import uuid, math, time, datetime, pickle, os, shutil, json, glob
+import uuid, math, time, datetime, pickle, os, shutil, yaml, glob
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -19,76 +19,14 @@ from scmodels import SCM
 
 plt.switch_backend('agg')
 
-# CDT algorithms
-models = [
-    {
-        "name" : "GIES",
-        "model" : "GIES(score='obs')",
-        "parallel" : True,
-        "type" : 1
-    },
-    {
-        "name" : "GIES",
-        "model" : "GIES(score='int')",
-        "parallel" : True,
-        "type" : 2
-    },
-    {
-        "name" : "LiNGAM",
-        "model" : "LiNGAM()",
-        "parallel" : True,
-        "type" : 2
-    },    
-    {
-        "name" : "PC",
-        "model" : "PC()",
-        "parallel" : True
-    },
-    {
-        "name" : "GS", 
-        "model" : "GS()",
-        "parallel" : True
-    },
-    {
-        "name" : "IAMB",
-        "model" : "IAMB()",
-        "parallel" : True
-    },
-    {
-        "name" : "Fast_IAMB",
-        "model" : "Fast_IAMB()",
-        "parallel" : True
-    },
-    {
-        "name" : "Inter_IAMB",
-        "model" : "Inter_IAMB()",
-        "parallel" : True
-    },
-    {
-        "name" : "MMPC",
-        "model" : "MMPC()",
-        "parallel" : True
-    },
-    # {
-    #     "name" : "CCDr",
-    #     "model" : "CCDr()",
-    #    "parallel" : True
-    # },
-    # {
-    #     "name" : "SAM",
-    #     "model" : "SAM()",
-    #     "parallel" : False,
-    #     "scale_data" : True
-    # }
-]
-
 # Global variables
 plots_file = "logs/plots_cdt_algo.xlsx"
 plots_sheet_name = "plots"
 config_sheet_name = "configs"
 log_file ='logs/cdt_algo_eval.log'
 data_folder = "data_cdt_algo_eval"
-config_file = "configs_for_cdt_algo_eval.json"
+config_file = "dag_generation_configs.yml"
+cdt_algos_file = "cdt_algos.yml"
 metrics = {
     "aupr":'round(precision_recall(orig_dag, algo_dag)[0], 2)', 
     "sid":'int(SID(orig_dag, algo_dag))',
@@ -229,8 +167,9 @@ def train_algos_for_sample_size(algos, data_folder, num_samples,
             results = [pool.apply_async(train_algo, args=args) 
                         for args in args_list]
             results = [result.get(timeout=timeout) for result in results]
-            results.append(train_non_parallable_algos(algos, data_file, conf, 
-                                                      orig_scm_dists, results))
+            result = train_non_parallable_algos(algos, data_file, conf, 
+                                                      orig_scm_dists, results)
+            if result: results.append(result)
             update_scores(scores, results)
         except multiprocessing.TimeoutError:
             log_progress(f"**TIMEOUT after {timeout} secs in \
@@ -241,6 +180,9 @@ iteration {iter} for {conf['name']} using {num_samples}")
     return scores
 
 def get_algos_for_training(conf):
+    with open(cdt_algos_file) as file:
+        models = yaml.safe_load(file)
+
     algos = []
     for algo_meta_data in models:
         if "type" in algo_meta_data:
@@ -415,7 +357,14 @@ def generate_data_for_config(num_samples, iter, dists_file_path):
             trials -= 1
             continue
     return data_file
- 
+
+def get_args_for_data_generation_process(dists_file_paths, num_iterations, 
+                                         sample_sizes):
+    args = [(num_samples, iter, path) for path in dists_file_paths 
+                                            for iter in range(num_iterations) 
+                                                for num_samples in sample_sizes]
+    return args
+
 def get_scm(config):
     input_nodes = config["nodes"]
     dSCM = eval(config["dSCM"])
@@ -423,27 +372,24 @@ def get_scm(config):
     return scm, dSCM.get_scm_dists()
 
 def check_and_handle_dists_creation(dists_file, conf, data_folder):
-    create = False
-    force = conf["force_data_generation"]
-    if not force:
+    if not conf["force_data_generation"]:
         if os.path.exists(dists_file):
             log_progress(f"{dists_file} already exists. \
 To generate new distribution set 'force_data_generation' to true")
-            return create
+            return False
 
     pattern = f"{conf['name']}_*.data"
     data_files = glob.glob(os.path.join(data_folder, pattern))
     for file in data_files:
         os.remove(file)
-    create = True
-    return create
+    return True
 
 def get_algo_eval_configs(config_file):
     with open(config_file,"r") as file:
-        configs = json.load(file)
+        configs = yaml.safe_load(file)
     return configs
     
-def def_generate_and_save_scm_dists(config_file, data_folder):
+def generate_and_save_scm_dists(config_file, data_folder):
     dists_file_paths = []
     for conf in get_algo_eval_configs(config_file):
         dists_file = f"{data_folder}/{conf['name']}.dists"
@@ -461,19 +407,17 @@ def generate_all_data(data_folder, config_file):
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    dists_file_paths = def_generate_and_save_scm_dists(config_file, data_folder)
-    dists_file_paths = [(dist_file,) for dist_file in dists_file_paths]
-    num_processes = max(1, min(len(dists_file_paths), multiprocessing.cpu_count() - 1))
-    for num_samples in sample_sizes:
-        for iter in range(num_iterations):
-            partial_worker = partial(generate_data_for_config, num_samples, iter)
-            pool = multiprocessing.Pool(processes=num_processes)
-            results = pool.starmap(partial_worker, dists_file_paths)
-            results = [result for result in results]
+    dists_file_paths = generate_and_save_scm_dists(config_file, data_folder)
+    args = get_args_for_data_generation_process(dists_file_paths, 
+                                                num_iterations,
+                                                sample_sizes)
+    num_processes = max(1, min(len(args), multiprocessing.cpu_count() - 1))
+    pool = multiprocessing.Pool(processes=num_processes)
+    results = pool.starmap(generate_data_for_config, args)
+    results = [result for result in results]
     return dists_file_paths
 
 if __name__ == "__main__":
-    force = False
     temp_folder = "temp"
     if not os.path.exists(temp_folder):
         os.makedirs(temp_folder)
