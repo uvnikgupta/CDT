@@ -422,7 +422,8 @@ if __name__ == "__main__":
     if not os.path.exists(temp_folder):
         os.makedirs(temp_folder)
 
-    if len(arguments) > 1 and arguments[1] == 1:
+    print(f"argument : {arguments[1]}")
+    if len(arguments) > 1 and int(arguments[1]) == 1:
         for filename in os.listdir("logs"):
             file_path = os.path.join("logs", filename)
             if os.path.isfile(file_path):
