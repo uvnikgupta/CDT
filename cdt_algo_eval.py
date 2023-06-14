@@ -1,6 +1,5 @@
 import multiprocessing
-from functools import partial
-import uuid, math, time, datetime, pickle, os, shutil, yaml, glob
+import uuid, math, time, datetime, pickle, os, shutil, yaml, glob, sys
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -210,10 +209,9 @@ def populate_cdt_algos_scores_for_config(scm_dists, conf, data_folder):
         row = row + 1
         
 def save_config_to_xl(configs_sheet, conf):
-    if configs_sheet.max_row == 1:
-        row = 1
-    else:
-        row = configs_sheet.max_row + 1
+    row = 1
+    while configs_sheet.cell(row=row, column=1).value is not None:
+        row +=1
     configs_sheet.cell(row=row, column=1, value=str(conf))    
 
 def get_score_text(score_data):
@@ -418,16 +416,19 @@ def generate_all_data(data_folder, config_file):
     return dists_file_paths
 
 if __name__ == "__main__":
+    arguments = sys.argv
+
     temp_folder = "temp"
     if not os.path.exists(temp_folder):
         os.makedirs(temp_folder)
 
-    for filename in os.listdir("logs"):
-        file_path = os.path.join("logs", filename)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
+    if len(arguments) > 1 and arguments[1] == 1:
+        for filename in os.listdir("logs"):
+            file_path = os.path.join("logs", filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        dists_file_paths = generate_all_data(data_folder, config_file)
 
-    dists_file_paths = generate_all_data(data_folder, config_file)
     for conf in get_algo_eval_configs(config_file):
         dists_file = f"{data_folder}/{conf['name']}.dists"
         with open(dists_file, "rb") as file:
