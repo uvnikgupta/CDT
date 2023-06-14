@@ -195,7 +195,7 @@ def get_algos_for_training(conf):
             algos.append(algo_meta_data)
     return algos
 
-def populate_cdt_algos_scores_for_config(scm_dists, conf, data_folder):
+def train_algos_for_config_and_save_results(scm_dists, conf, data_folder):
     global row
     algos = get_algos_for_training(conf)
 
@@ -323,7 +323,19 @@ def save_plots_and_scores(plots_file, col, scores, conf, num_samples=""):
     workbook.close()
     log_progress("Saving DAGs - Done")
 
-def generate_data_for_config(num_samples, iter, dists_file_path):
+def start_training(config_file):
+    for conf in get_dag_configs(config_file):
+        dists_file = f"{data_folder}/{conf['name']}.dists"
+        with open(dists_file, "rb") as file:
+            scm_dists = pickle.load(file)
+        scm = SCM(scm_dists)
+        save_plots_and_scores(plots_file, 0, 
+                           {"Original":{"dag": scm.dag}}, 
+                           conf)
+        
+        train_algos_for_config_and_save_results(scm_dists, conf, data_folder)
+
+def generate_data(num_samples, iter, dists_file_path):
     folder = dists_file_path.split("/")[0]
     conf_name = dists_file_path.split("/")[1].split(".")[0]
     data_file = f"{folder}/{conf_name}_{num_samples}_{iter}.data"
@@ -363,7 +375,7 @@ def get_args_for_data_generation_process(dists_file_paths, num_iterations,
                                                 for num_samples in sample_sizes]
     return args
 
-def get_scm(config):
+def get_scm_and_scm_dists(config):
     input_nodes = config["nodes"]
     dSCM = eval(config["dSCM"])
     scm = dSCM.create(input_nodes)
@@ -382,20 +394,20 @@ To generate new distribution set 'force_data_generation' to true")
         os.remove(file)
     return True
 
-def get_algo_eval_configs(config_file):
+def get_dag_configs(config_file):
     with open(config_file,"r") as file:
         configs = yaml.safe_load(file)
     return configs
     
 def generate_and_save_scm_dists(config_file, data_folder):
     dists_file_paths = []
-    for conf in get_algo_eval_configs(config_file):
+    for conf in get_dag_configs(config_file):
         dists_file = f"{data_folder}/{conf['name']}.dists"
         dists_file_paths.append(dists_file)
 
         create = check_and_handle_dists_creation(dists_file, conf, data_folder)
         if create:
-            _, scm_dists = get_scm(conf)
+            _, scm_dists = get_scm_and_scm_dists(conf)
             with open(dists_file, "wb") as file:
                 pickle.dump(scm_dists, file)   
     return dists_file_paths
@@ -411,7 +423,7 @@ def generate_all_data(data_folder, config_file):
                                                 sample_sizes)
     num_processes = max(1, min(len(args), multiprocessing.cpu_count() - 1))
     pool = multiprocessing.Pool(processes=num_processes)
-    results = pool.starmap(generate_data_for_config, args)
+    results = pool.starmap(generate_data, args)
     results = [result for result in results]
     return dists_file_paths
 
@@ -427,15 +439,6 @@ if __name__ == "__main__":
             file_path = os.path.join("logs", filename)
             if os.path.isfile(file_path):
                 os.remove(file_path)
-        dists_file_paths = generate_all_data(data_folder, config_file)
+        _ = generate_all_data(data_folder, config_file)
 
-    for conf in get_algo_eval_configs(config_file):
-        dists_file = f"{data_folder}/{conf['name']}.dists"
-        with open(dists_file, "rb") as file:
-            scm_dists = pickle.load(file)
-        scm = SCM(scm_dists)
-        save_plots_and_scores(plots_file, 0, 
-                           {"Original":{"dag": scm.dag}}, 
-                           conf)
-        
-        populate_cdt_algos_scores_for_config(scm_dists, conf, data_folder)
+    start_training(config_file)
