@@ -423,7 +423,7 @@ if __name__ == "__main__":
         os.makedirs(temp_folder)
 
     print(f"argument : {arguments[1]}")
-    if len(arguments) > 1 and int(arguments[1]) == 1:
+    if len(arguments) == 1:
         for filename in os.listdir("logs"):
             file_path = os.path.join("logs", filename)
             if os.path.isfile(file_path):
