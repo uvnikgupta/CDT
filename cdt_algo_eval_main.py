@@ -2,6 +2,7 @@ import os, sys
 import numpy as np
 from dat_data_generator import DAGDataGenerator
 from algo_trainer_st1 import AlgoTrainerST1
+from algo_trainer_st2 import AlgoTrainerST2
 import cdt_algo_eval_common_methods as cdt_cm
 
 conf_file = "dag_generation_configs.yml"
@@ -14,13 +15,20 @@ num_iterations = 3
 
 def train_algos(conf_file, num_iterations, sample_sizes, 
                 plots_file, cdt_algos_file, data_folder):
+    st2_confs = []
+    trainer_st1 = AlgoTrainerST1(num_iterations, sample_sizes,
+                                 plots_file, cdt_algos_file, data_folder)
+            
     for conf in cdt_cm.get_dag_configs(conf_file):
         num_nodes = sum(np.ravel(np.array([conf["nodes"]])))
         if num_nodes <= 30:
-            trainer = AlgoTrainerST1(num_iterations, sample_sizes, 
-                               plots_file, cdt_algos_file, data_folder)
-            trainer.start_training(conf)
-            
+            trainer_st1.start_training(conf)
+        else:
+            st2_confs.append(conf)
+    
+    if st2_confs:
+        pass
+
 def clean_folders(folder):
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
