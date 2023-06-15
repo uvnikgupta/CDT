@@ -30,12 +30,10 @@ metrics = {
 
 class AlgoTrainerST1():
     def __init__(self, num_iterations, sample_sizes, 
-                 plots_file, conf_file, cdt_algos_file, 
-                 data_folder):
+                 plots_file, cdt_algos_file, data_folder):
         self.__num_iterations = num_iterations
         self.__sample_sizes = sample_sizes
         self.__plots_file = plots_file
-        self.__conf_file = conf_file
         self.__cdt_algos_file = cdt_algos_file
         self.__data_folder = data_folder
 
@@ -331,16 +329,15 @@ due to exceeding the maximum size.")
         workbook.close()
         cdt_cm.log_progress("Saving DAGs - Done")
 
-    def start_training(self):
-        for conf in cdt_cm.get_dag_configs(self.__conf_file):
-            dists_file = f"{self.__data_folder}/{conf['name']}.dists"
-            with open(dists_file, "rb") as file:
-                scm_dists = pickle.load(file)
-            scm = SCM(scm_dists)
-            self.save_plots_and_scores(self.__plots_file, 0, 
-                                       {"Original":{"dag": scm.dag}}, 
-                                       conf)
-            
-            self.train_algos_for_config_and_save_results(scm_dists, conf, 
-                                                         self.__data_folder)
+    def start_training(self, conf):
+        dists_file = f"{self.__data_folder}/{conf['name']}.dists"
+        with open(dists_file, "rb") as file:
+            scm_dists = pickle.load(file)
+        scm = SCM(scm_dists)
+        self.save_plots_and_scores(self.__plots_file, 0, 
+                                    {"Original":{"dag": scm.dag}}, 
+                                    conf)
+        
+        self.train_algos_for_config_and_save_results(scm_dists, conf, 
+                                                        self.__data_folder)
 
