@@ -103,3 +103,11 @@
   - 3
   dSCM: DynamicSCM(max_parents=20, complex_operations={})
   force_data_generation: false
+- name: config_36
+  nodes:
+  - 50
+  - 20
+  - 10
+  - 3
+  dSCM: DynamicSCM(max_parents=15)
+  force_data_generation: false

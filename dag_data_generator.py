@@ -100,5 +100,8 @@ To generate new distribution set 'force_data_generation' to true")
         pool = multiprocessing.Pool(processes=num_processes)
         results = pool.starmap(self.generate_data, args)
         results = [result for result in results]
+        
+        pool.close()
+        pool.join()
         return dists_file_paths
 
