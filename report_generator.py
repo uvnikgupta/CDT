@@ -6,6 +6,7 @@ import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.pyplot as plt
 from openpyxl.drawing.image import Image
+from openpyxl.utils.dataframe import dataframe_to_rows
 from io import BytesIO
 from PIL import Image as PILImage
 from scmodels import SCM
@@ -26,6 +27,29 @@ class ReportGenerator():
         self.__config_file = config_file
         self.__plots_sheet_name = "plots"
         self.__config_sheet_name = "configs"
+        self.__details_sheet_name = "details"
+
+    def __save_config_to_xl(self):
+        with open(self.__config_file) as file:
+            configs = yaml.safe_load(file)
+
+        workbook = self.__get_xl_workbook()
+        sheet = workbook[self.__config_sheet_name]
+
+        for i, config in enumerate(configs):
+            target_cell = "A" + str(i + 1)
+            sheet[target_cell] = str(config)
+
+        workbook.save(self.__report_file)
+        workbook.close()
+
+    def __write_tabular_report_to_xl(self, df):
+        workbook = self.__get_xl_workbook()
+        sheet = workbook[self.__details_sheet_name]
+        for row in dataframe_to_rows(df, index=False, header=True):
+            sheet.append(row)
+        workbook.save(self.__report_file)
+        workbook.close()
 
     def __get_node_colors(self, dag):
         nodes = dag.nodes()
@@ -88,7 +112,7 @@ class ReportGenerator():
         pil_image.close()
         os.remove('plot.png')
 
-    def __get_xl_workbook_for_plots(self):
+    def __get_xl_workbook(self):
         workbook = None
         try:
             workbook = openpyxl.load_workbook(self.__report_file)
@@ -98,10 +122,12 @@ class ReportGenerator():
             plots_sheet.title = self.__plots_sheet_name
             configs_sheet = workbook.create_sheet()
             configs_sheet.title = self.__config_sheet_name
+            details_sheet = workbook.create_sheet()
+            details_sheet.title = self.__details_sheet_name
         return workbook
 
-    def __save_to_xl(self, data):
-        workbook = self.__get_xl_workbook_for_plots()
+    def __save_plots_to_xl(self, data):
+        workbook = self.__get_xl_workbook()
 
         for _, row_data in data.iterrows():
             plot_data = {}
@@ -160,7 +186,7 @@ class ReportGenerator():
         status_df.drop(columns=["index"], inplace=True)
         return status_df
     
-    def __get_cong_nodes(self):
+    def __get_config_nodes(self):
         config_node = {}
         with open(self.__config_file, "r") as file:
             configs = yaml.safe_load(file)
@@ -189,24 +215,31 @@ class ReportGenerator():
                   .join(gb.agg({"samples": "last"}))
                   .reset_index())
         
-        for conf, nodes in self.__get_cong_nodes().items():
+        for conf, nodes in self.__get_config_nodes().items():
             counts.loc[counts["config"] == conf, "nodes"] = nodes
-
         counts["nodes"] = counts["nodes"].astype(int)
+
         counts.sort_values(by=["nodes", "config", "samples", "aupr_mean"],
                            ascending=[True, True, True, False], inplace=True)
         
+        # Calculate row numbers for the plots in xl
         counts['row'] = (counts['config'].ne(counts['config'].shift()) | 
                          counts['samples'].ne(counts['samples'].shift())).cumsum()
         counts["col"] = counts.groupby(["config", "samples"]).cumcount() + 1
 
+        # Set the column number of the plot of the original configuration to 0. 
+        # This is for the first row of every new configuraion
         counts["config_col"] = ''
         counts.loc[counts['config'].ne(counts['config'].shift()), 'config_col'] = 0
         return counts
     
     def generate_report(self):
         agg = self.__get_status_aggregates()
-        self.__save_to_xl(agg)
+        self.__save_plots_to_xl(agg)
+        self.__save_config_to_xl()
+        self.__write_tabular_report_to_xl(agg[["samples", "config", "algo", "nodes", 
+                                               "aupr_mean", "aupr_std", "sid_mean", "sid_std", 
+                                               "shd_mean", "shd_std", "rt_mean", "rt_std"]])
         
 if __name__ == "__main__":
     config_file = "dag_generation_configs.yml"

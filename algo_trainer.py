@@ -8,11 +8,6 @@ from cdt.metrics import precision_recall, SID, SHD
 from scmodels import SCM
 import cdt_algo_eval_common_methods as cdt_cm
 
-# Workaround for pygraphviz where it crashes after created 170 graphs
-# ref : https://stackoverflow.com/questions/60876623/pygraphviz-crashes-after-drawing-170-graphs
-import win32file as wfile
-wfile._setmaxstdio(1024)
-
 class AlgoTrainer():
     plots_sheet_name = "plots"
     config_sheet_name = "configs"
